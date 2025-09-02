@@ -8,8 +8,11 @@ const creativityInput = document.getElementById("creativity");
 const difficultyInput = document.getElementById("difficulty");
 const costInput = document.getElementById("cost");
 
-// ⚠️ Replace with your API key (local testing only – don’t deploy like this)
-const API_KEY = "YOUR_API_KEY_HERE";
+// ⚠️ Use your .env file locally (don’t commit it)
+// For GitHub Pages deployment, paste the key directly here
+// Example: const API_KEY = "AIzaSy...yourKey...";
+const API_KEY = "PASTE_KEY_HERE";
+
 const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + API_KEY;
 
 generateBtn.addEventListener("click", async () => {
