@@ -13,6 +13,24 @@
     <label for="prompt">Enter your project idea or constraints:</label>
     <textarea id="prompt" placeholder="e.g., Embedded systems with sensors and low power usage..."></textarea>
 
+    <!-- Additional parameters -->
+    <label for="creativity">Creativity (0–1):</label>
+    <input type="range" id="creativity" min="0" max="1" step="0.1" value="0.7">
+
+    <label for="difficulty">Technical Difficulty:</label>
+    <select id="difficulty">
+      <option value="beginner">Beginner</option>
+      <option value="intermediate">Intermediate</option>
+      <option value="advanced">Advanced</option>
+    </select>
+
+    <label for="cost">Estimated Cost Range:</label>
+    <select id="cost">
+      <option value="low">Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+    </select>
+
     <button id="generate">Generate Ideas</button>
 
     <div id="output" class="output-box">
@@ -21,6 +39,5 @@
   </div>
 
   <script src="app.js"></script>
-
 </body>
 </html>
