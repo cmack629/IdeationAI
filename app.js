@@ -10,7 +10,7 @@ const costInput = document.getElementById("cost");
 const modelSelect = document.getElementById("model");
 
 // ⚠️ Replace with your actual Gemini API key
-const API_KEY = "YOUR_API_KEY_HERE";
+const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4";
 
 // Load available models on page load
 async function loadModels() {
