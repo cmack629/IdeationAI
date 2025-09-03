@@ -7,17 +7,52 @@ const outputDiv = document.getElementById("output");
 const creativityInput = document.getElementById("creativity");
 const difficultyInput = document.getElementById("difficulty");
 const costInput = document.getElementById("cost");
+const modelSelect = document.getElementById("model");
 
 // ⚠️ Replace with your actual Gemini API key
-const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4";
+const API_KEY = "YOUR_API_KEY_HERE";
 
-const API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=" +
-  API_KEY;
+// Load available models on page load
+async function loadModels() {
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`);
+    const data = await res.json();
 
+    if (data.error) {
+      modelSelect.innerHTML = `<option>Error: ${data.error.message}</option>`;
+      return;
+    }
+
+    if (data.models && data.models.length > 0) {
+      modelSelect.innerHTML = "";
+      data.models.forEach(m => {
+        // Only show models that support generateContent
+        if (m.supportedMethods?.includes("generateContent")) {
+          const opt = document.createElement("option");
+          opt.value = m.name;
+          opt.textContent = m.name;
+          modelSelect.appendChild(opt);
+        }
+      });
+    } else {
+      modelSelect.innerHTML = "<option>No models available</option>";
+    }
+  } catch (err) {
+    modelSelect.innerHTML = `<option>Fetch error: ${err}</option>`;
+  }
+}
+
+loadModels();
+
+// Handle Generate button click
 generateBtn.addEventListener("click", async () => {
   const prompt = promptInput.value.trim();
+  const model = modelSelect.value;
 
+  if (!model) {
+    outputDiv.textContent = "⚠️ Please select a model first.";
+    return;
+  }
   if (!prompt) {
     outputDiv.textContent = "⚠️ Please enter a prompt before generating ideas.";
     return;
@@ -36,6 +71,8 @@ generateBtn.addEventListener("click", async () => {
   outputDiv.textContent = "⏳ Generating ideas...";
 
   try {
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${API_KEY}`;
+
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -48,15 +85,12 @@ generateBtn.addEventListener("click", async () => {
     });
 
     const data = await response.json();
-    console.log("Gemini raw response:", data);
 
-    // Handle API errors
     if (data.error) {
       outputDiv.textContent = `❌ API Error: ${data.error.message}`;
       return;
     }
 
-    // Handle valid responses
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (text) {
       outputDiv.textContent = text;
@@ -64,7 +98,6 @@ generateBtn.addEventListener("click", async () => {
       outputDiv.textContent = "⚠️ No response from Gemini.";
     }
   } catch (error) {
-    console.error("Fetch error:", error);
     outputDiv.textContent = "❌ Network or fetch error calling Gemini API.";
   }
 });
