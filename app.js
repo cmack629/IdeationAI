@@ -12,7 +12,7 @@ const costInput = document.getElementById("cost");
 const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4";
 
 const API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" +
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=" +
   API_KEY;
 
 generateBtn.addEventListener("click", async () => {
