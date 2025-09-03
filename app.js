@@ -9,7 +9,7 @@ const difficultyInput = document.getElementById("difficulty");
 const costInput = document.getElementById("cost");
 
 // ⚠️ Replace with your actual Gemini API key
-const API_KEY = AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4;
+const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4";
 
 const API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" +
