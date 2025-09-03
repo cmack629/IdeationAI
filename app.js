@@ -8,12 +8,12 @@ const creativityInput = document.getElementById("creativity");
 const difficultyInput = document.getElementById("difficulty");
 const costInput = document.getElementById("cost");
 
-// ⚠️ Use your .env file locally (don’t commit it)
-// For GitHub Pages deployment, paste the key directly here
-// Example: const API_KEY = "AIzaSy...yourKey...";
-const API_KEY = "PASTE_KEY_HERE";
+// ⚠️ Replace with your actual Gemini API key
+const API_KEY = "PASTE_REAL_KEY_HERE";
 
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + API_KEY;
+const API_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" +
+  API_KEY;
 
 generateBtn.addEventListener("click", async () => {
   const prompt = promptInput.value.trim();
@@ -42,19 +42,29 @@ generateBtn.addEventListener("click", async () => {
       body: JSON.stringify({
         contents: [{ parts: [{ text: enhancedPrompt }] }],
         generationConfig: {
-          temperature: parseFloat(creativityInput.value),
-        }
-      })
+          temperature: parseFloat(creativityInput.value) || 0.7,
+        },
+      }),
     });
 
     const data = await response.json();
-    if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      outputDiv.textContent = data.candidates[0].content.parts[0].text;
+    console.log("Gemini raw response:", data);
+
+    // Handle API errors
+    if (data.error) {
+      outputDiv.textContent = `❌ API Error: ${data.error.message}`;
+      return;
+    }
+
+    // Handle valid responses
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (text) {
+      outputDiv.textContent = text;
     } else {
       outputDiv.textContent = "⚠️ No response from Gemini.";
     }
   } catch (error) {
-    console.error(error);
-    outputDiv.textContent = "❌ Error calling Gemini API.";
+    console.error("Fetch error:", error);
+    outputDiv.textContent = "❌ Network or fetch error calling Gemini API.";
   }
 });
