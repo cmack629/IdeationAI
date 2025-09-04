@@ -90,3 +90,17 @@ button:hover {
   color: #333;
   white-space: pre-wrap;
 }
+
+/* Checkbox group styling */
+.checkbox-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.checkbox-group label {
+  font-weight: normal;
+  color: #333;
+}
+

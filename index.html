@@ -13,23 +13,40 @@
     <label for="prompt">Enter your project idea or constraints:</label>
     <textarea id="prompt" placeholder="e.g., Embedded systems with sensors and low power usage..."></textarea>
 
-    <!-- Additional parameters -->
-    <label for="creativity">Creativity (0–1):</label>
-    <input type="range" id="creativity" min="0" max="1" step="0.1" value="0.7">
-
     <label for="difficulty">Technical Difficulty:</label>
     <select id="difficulty">
-      <option value="beginner">Beginner</option>
-      <option value="intermediate">Intermediate</option>
-      <option value="advanced">Advanced</option>
+      <option value="1">Beginner (1)</option>
+      <option value="2">Intermediate (2)</option>
+      <option value="3">Advanced (3)</option>
     </select>
 
-    <label for="cost">Estimated Cost Range:</label>
+    <label for="cost">Estimated Cost Range (USD):</label>
     <select id="cost">
-      <option value="low">Low</option>
-      <option value="medium">Medium</option>
-      <option value="high">High</option>
+      <option value="<$50">Very Low (&lt;$50)</option>
+      <option value="$50–$200">Low ($50–$200)</option>
+      <option value="$200–$500">Medium ($200–$500)</option>
+      <option value="$500–$1000">High ($500–$1000)</option>
+      <option value="$1000+">Very High ($1000+)</option>
     </select>
+
+    <label>Relevant Technologies (check all that apply):</label>
+    <div id="technologies" class="checkbox-group">
+      <label><input type="checkbox" value="Embedded Systems"> Embedded Systems</label>
+      <label><input type="checkbox" value="IoT"> Internet of Things (IoT)</label>
+      <label><input type="checkbox" value="AI/ML"> Artificial Intelligence / Machine Learning</label>
+      <label><input type="checkbox" value="Robotics"> Robotics</label>
+      <label><input type="checkbox" value="Networking"> Networking / Protocols</label>
+      <label><input type="checkbox" value="FPGA"> FPGA / Digital Design</label>
+      <label><input type="checkbox" value="Cloud"> Cloud / Edge Computing</label>
+      <label><input type="checkbox" value="Cybersecurity"> Cybersecurity</label>
+      <label><input type="checkbox" value="Wearables"> Wearables</label>
+      <label><input type="checkbox" value="Biomedical"> Biomedical Devices</label>
+      <label><input type="checkbox" value="AR/VR"> AR / VR</label>
+      <label><input type="checkbox" value="Autonomous Vehicles"> Autonomous Vehicles</label>
+      <label><input type="checkbox" value="Smart Homes"> Smart Homes / Automation</label>
+      <label><input type="checkbox" value="Energy Systems"> Renewable / Energy Systems</label>
+      <label><input type="checkbox" value="Signal Processing"> Signal Processing</label>
+    </div>
 
     <button id="generate">Generate Ideas</button>
 
