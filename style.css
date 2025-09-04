@@ -49,7 +49,7 @@ textarea {
   margin-bottom: 1rem;
 }
 
-/* Select and inputs */
+/* Selects */
 select {
   width: 100%;
   margin-bottom: 1rem;
@@ -100,24 +100,46 @@ button:hover {
   border-radius: 8px;
   color: #333;
   white-space: normal;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
-/* Stylized AI results */
-.idea-results h3 {
-  margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
+/* Idea results wrapper */
+.idea-results {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Each idea as a card */
+.idea-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.idea-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.idea-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
   color: #0056b3;
 }
 
-.idea-results strong {
-  color: #222;
+.idea-card strong {
+  color: #000;
 }
 
-.idea-results ul {
-  margin: 0.5rem 0 1rem 1.5rem;
+.idea-card ul {
+  margin: 0.5rem 0 0.75rem 1.5rem;
+  padding: 0;
 }
 
-.idea-results li {
+.idea-card li {
   margin-bottom: 0.3rem;
 }

@@ -5,15 +5,14 @@ const outputDiv       = document.getElementById("output");
 const difficultyInput = document.getElementById("difficulty");
 const costInput       = document.getElementById("cost");
 const techGroup       = document.getElementById("technologies");
-const modelSelect     = document.getElementById("model"); // optional
 
 // ==== Your API key ====
-const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4"; // replace with your actual key
+const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4"; // replace with your real Gemini API key
 
-// ==== Defaults & helpers ====
+// ==== Defaults ====
 const DEFAULT_MODEL = "models/gemini-2.5-flash";
-let currentModel = DEFAULT_MODEL;
 
+// Set output helper
 function setOutput(msg, asHTML = false) {
   if (!outputDiv) return;
   if (asHTML) {
@@ -23,26 +22,42 @@ function setOutput(msg, asHTML = false) {
   }
 }
 
+// Ensure model name
 function ensureResourceName(name) {
   return name?.startsWith("models/") ? name : `models/${name}`;
 }
 
+// Collect selected technologies
 function getSelectedTechnologies() {
   const checkboxes = techGroup?.querySelectorAll("input[type=checkbox]:checked") || [];
   return Array.from(checkboxes).map(cb => cb.value);
 }
 
-// Basic Markdown → HTML converter
+// Markdown → HTML converter with card wrapping
 function markdownToHTML(md) {
-  return md
-    .replace(/^### (.*$)/gim, "<h3>$1</h3>")
+  let html = md
+    // Headings → card wrappers
+    .replace(/^### (.*$)/gim, "</div><div class='idea-card'><h3>$1</h3>")
     .replace(/^## (.*$)/gim, "<h2>$1</h2>")
     .replace(/^# (.*$)/gim, "<h1>$1</h1>")
+    // Bold + italics
     .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/gim, "<em>$1</em>")
+    // Lists
     .replace(/^- (.*$)/gim, "<li>$1</li>")
+    // Paragraphs
     .replace(/(\r\n|\n){2,}/g, "</p><p>")
     .replace(/(\r\n|\n)/g, "<br>");
+
+  // Wrap list items
+  html = html.replace(/(<li>.*<\/li>)/gim, "<ul>$1</ul>");
+
+  // Ensure first card wrapper
+  if (!html.startsWith("<div class='idea-card'>")) {
+    html = `<div class='idea-card'>${html}</div>`;
+  }
+
+  return html;
 }
 
 // ==== Generate click ====
@@ -74,7 +89,7 @@ For each idea, include:
 
   setOutput("⏳ Generating ideas...");
 
-  const modelName = ensureResourceName(currentModel || DEFAULT_MODEL);
+  const modelName = ensureResourceName(DEFAULT_MODEL);
 
   try {
     const res = await fetch(
@@ -87,9 +102,7 @@ For each idea, include:
         },
         body: JSON.stringify({
           contents: [{ parts: [{ text: enhancedPrompt }] }],
-          generationConfig: {
-            temperature: 0.7
-          }
+          generationConfig: { temperature: 0.7 }
         })
       }
     );
@@ -108,7 +121,7 @@ For each idea, include:
 
     if (text) {
       const html = markdownToHTML(text);
-      setOutput(`<div class="idea-results"><p>${html}</p></div>`, true);
+      setOutput(`<div class="idea-results">${html}</div>`, true);
     } else if (data.promptFeedback?.blockReason) {
       setOutput(`⚠️ Blocked: ${data.promptFeedback.blockReason}`);
     } else {
