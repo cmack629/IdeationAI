@@ -8,19 +8,113 @@
 </head>
 <body>
   <div class="container">
-    <h1>Computer Engineering Project Ideator</h1>
+    <h1>💡 AI‑Powered Ideation — Senior Project</h1>
 
-    <label for="prompt">Enter your project idea or constraints:</label>
-    <textarea id="prompt" placeholder="e.g., Embedded systems with sensors and low power usage..."></textarea>
+    <!-- CONFIGURATION -->
+    <section class="card">
+      <h2>Configuration</h2>
 
-    <button id="generate">Generate Ideas</button>
+      <label for="apiKey">OpenAI API Key</label>
+      <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
 
-    <div id="output" class="output-box">
-      <!-- AI response will go here -->
-    </div>
+      <label for="model">AI Model</label>
+      <select id="model">
+        <option value="gemini-1.5-flash" selected>Gemini 1.5 Flash (fast)</option>
+        <option value="gemini-1.5-pro">Gemini 1.5 Pro (best quality)</option>
+      </select>
+
+      <!-- You can add Gemini later; keeping OpenAI first so we don't mix APIs yet -->
+    </section>
+
+    <!-- PROJECT PARAMETERS -->
+    <section class="card">
+      <h2>Project Parameters</h2>
+
+      <label for="problem">Problem Statement (optional)</label>
+      <textarea id="problem" placeholder="e.g., Students struggle to find open study spaces..."></textarea>
+
+      <div class="fieldset">
+        <div class="legend">Preferred Technologies</div>
+        <div class="checkbox-grid">
+          <label><input type="checkbox" name="tech" value="AI/ML" /> AI/ML</label>
+          <label><input type="checkbox" name="tech" value="IoT" /> IoT</label>
+          <label><input type="checkbox" name="tech" value="Mobile Development" /> Mobile Development</label>
+          <label><input type="checkbox" name="tech" value="Web Development" /> Web Development</label>
+          <label><input type="checkbox" name="tech" value="Embedded Systems" /> Embedded Systems</label>
+          <label><input type="checkbox" name="tech" value="Robotics" /> Robotics</label>
+          <label><input type="checkbox" name="tech" value="Control Systems" /> Control Systems</label>
+          <label><input type="checkbox" name="tech" value="Cybersecurity" /> Cybersecurity</label>
+        </div>
+      </div>
+
+      <div class="fieldset">
+        <div class="legend">Preferred Industry</div>
+        <div class="checkbox-grid">
+          <label><input type="checkbox" name="industry" value="Healthcare" /> Healthcare</label>
+          <label><input type="checkbox" name="industry" value="Education" /> Education</label>
+          <label><input type="checkbox" name="industry" value="Energy" /> Energy</label>
+          <label><input type="checkbox" name="industry" value="Transportation" /> Transportation</label>
+          <label><input type="checkbox" name="industry" value="Agriculture" /> Agriculture</label>
+          <label><input type="checkbox" name="industry" value="Manufacturing" /> Manufacturing</label>
+          <label><input type="checkbox" name="industry" value="Entertainment" /> Entertainment</label>
+          <label><input type="checkbox" name="industry" value="Finance" /> Finance</label>
+        </div>
+      </div>
+
+      <div class="fieldset">
+        <div class="legend">Explanation Depth</div>
+        <div class="radio-group">
+          <label>
+            <input type="radio" name="explainLevel" value="low" />
+            Low‑level (nitty‑gritty details, step‑by‑step, code/hardware specifics)
+          </label>
+          <label>
+            <input type="radio" name="explainLevel" value="mid" checked />
+            Mid‑level (balanced overview with key nuances)
+          </label>
+          <label>
+            <input type="radio" name="explainLevel" value="high" />
+            High‑level (assume strong background; concise & conceptual)
+          </label>
+        </div>
+      </div>
+
+
+
+      <label for="innovation">Innovation Level</label>
+      <input id="innovation" type="range" min="0" max="100" value="30" />
+      <div class="range-hint">
+        <span>Low Risk</span><span>High Innovation</span>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <label for="budget">Budget Range</label>
+          <select id="budget">
+            <option value="$0 - $100">$0 - $100</option>
+            <option value="$100 - $200">$100 - $200</option>
+            <option value="$200 - $500" selected>$200 - $500</option>
+            <option value="$500+">$500+</option>
+          </select>
+        </div>
+        <div class="col">
+          <label for="complexity">Complexity</label>
+          <select id="complexity">
+            <option>Beginner</option>
+            <option>Intermediate</option>
+            <option>Advanced</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="generate">Generate Project Ideas</button>
+
+      <div id="output" class="output-box"></div>
+    </section>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 
 </body>
+
 </html>
