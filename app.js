@@ -14,8 +14,13 @@ const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4"; // replace with your 
 const DEFAULT_MODEL = "models/gemini-2.5-flash";
 let currentModel = DEFAULT_MODEL;
 
-function setOutput(msg) {
-  if (outputDiv) outputDiv.textContent = msg;
+function setOutput(msg, asHTML = false) {
+  if (!outputDiv) return;
+  if (asHTML) {
+    outputDiv.innerHTML = msg;
+  } else {
+    outputDiv.textContent = msg;
+  }
 }
 
 function ensureResourceName(name) {
@@ -25,6 +30,19 @@ function ensureResourceName(name) {
 function getSelectedTechnologies() {
   const checkboxes = techGroup?.querySelectorAll("input[type=checkbox]:checked") || [];
   return Array.from(checkboxes).map(cb => cb.value);
+}
+
+// Basic Markdown → HTML converter
+function markdownToHTML(md) {
+  return md
+    .replace(/^### (.*$)/gim, "<h3>$1</h3>")
+    .replace(/^## (.*$)/gim, "<h2>$1</h2>")
+    .replace(/^# (.*$)/gim, "<h1>$1</h1>")
+    .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/gim, "<em>$1</em>")
+    .replace(/^- (.*$)/gim, "<li>$1</li>")
+    .replace(/(\r\n|\n){2,}/g, "</p><p>")
+    .replace(/(\r\n|\n)/g, "<br>");
 }
 
 // ==== Generate click ====
@@ -39,7 +57,6 @@ generateBtn?.addEventListener("click", async () => {
   const cost = costInput?.value || "N/A";
   const selectedTechs = getSelectedTechnologies();
 
-  // Build enhanced prompt
   const enhancedPrompt = `
 User idea/constraints: ${prompt}
 Technical difficulty (1=Beginner, 2=Intermediate, 3=Advanced): ${difficulty}
@@ -90,7 +107,8 @@ For each idea, include:
     const text = parts.map(p => p.text || "").join("").trim();
 
     if (text) {
-      setOutput(text);
+      const html = markdownToHTML(text);
+      setOutput(`<div class="idea-results"><p>${html}</p></div>`, true);
     } else if (data.promptFeedback?.blockReason) {
       setOutput(`⚠️ Blocked: ${data.promptFeedback.blockReason}`);
     } else {

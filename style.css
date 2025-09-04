@@ -18,7 +18,7 @@ body {
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   width: 100%;
-  max-width: 700px;
+  max-width: 800px;
 }
 
 /* Headline */
@@ -49,15 +49,27 @@ textarea {
   margin-bottom: 1rem;
 }
 
-/* Select and sliders */
-select,
-input[type="range"] {
+/* Select and inputs */
+select {
   width: 100%;
   margin-bottom: 1rem;
   padding: 8px;
   font-size: 1rem;
   border: 1px solid #ccc;
   border-radius: 8px;
+}
+
+/* Checkbox group styling */
+.checkbox-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.checkbox-group label {
+  font-weight: normal;
+  color: #333;
 }
 
 /* Button */
@@ -86,21 +98,26 @@ button:hover {
   background: #fafafa;
   border: 1px solid #ddd;
   border-radius: 8px;
-  min-height: 80px;
   color: #333;
-  white-space: pre-wrap;
+  white-space: normal;
+  line-height: 1.5;
 }
 
-/* Checkbox group styling */
-.checkbox-group {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem 1rem;
-  margin-bottom: 1rem;
+/* Stylized AI results */
+.idea-results h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: #0056b3;
 }
 
-.checkbox-group label {
-  font-weight: normal;
-  color: #333;
+.idea-results strong {
+  color: #222;
 }
 
+.idea-results ul {
+  margin: 0.5rem 0 1rem 1.5rem;
+}
+
+.idea-results li {
+  margin-bottom: 0.3rem;
+}
