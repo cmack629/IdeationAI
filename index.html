@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CE Project Ideator</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css">
 </head>
 <body>
   <div class="container">
@@ -14,10 +15,7 @@
     <textarea id="prompt" placeholder="e.g., Embedded systems with sensors and low power usage..."></textarea>
 
     <label for="budget">Budget Range (USD):</label>
-    <div class="budget-sliders">
-      <input type="range" id="budget-min" min="0" max="10000" step="50" value="100">
-      <input type="range" id="budget-max" min="0" max="10000" step="50" value="1000">
-    </div>
+    <div id="budget-slider"></div>
     <div id="budget-display">Range: $100 – $1000</div>
 
     <label>Relevant Technologies (check all that apply):</label>
@@ -56,11 +54,18 @@
 
     <button id="generate">Generate Ideas</button>
 
+    <div id="extra-buttons" class="extra-buttons hidden">
+      <button id="expand">Expand with More Details</button>
+      <button id="similar">Generate Similar Ideas</button>
+      <button id="summarize">Summarize Key Points</button>
+    </div>
+
     <div id="output" class="output-box">
       <!-- AI response will go here -->
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,12 +1,15 @@
 // ==== Element handles ====
-const promptInput     = document.getElementById("prompt");
-const generateBtn     = document.getElementById("generate");
-const outputDiv       = document.getElementById("output");
-const budgetMinInput  = document.getElementById("budget-min");
-const budgetMaxInput  = document.getElementById("budget-max");
-const budgetDisplay   = document.getElementById("budget-display");
-const techGroup       = document.getElementById("technologies");
-const industryGroup   = document.getElementById("industries");
+const promptInput   = document.getElementById("prompt");
+const generateBtn   = document.getElementById("generate");
+const outputDiv     = document.getElementById("output");
+const budgetSlider  = document.getElementById("budget-slider");
+const budgetDisplay = document.getElementById("budget-display");
+const techGroup     = document.getElementById("technologies");
+const industryGroup = document.getElementById("industries");
+const extraButtons  = document.getElementById("extra-buttons");
+const expandBtn     = document.getElementById("expand");
+const similarBtn    = document.getElementById("similar");
+const summarizeBtn  = document.getElementById("summarize");
 
 // ==== Your API key ====
 const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4"; // replace with your real Gemini API key
@@ -14,18 +17,31 @@ const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4"; // replace with your 
 // ==== Defaults ====
 const DEFAULT_MODEL = "models/gemini-2.5-flash";
 
-// Update budget display
-function updateBudgetDisplay() {
-  const minVal = parseInt(budgetMinInput.value, 10);
-  const maxVal = parseInt(budgetMaxInput.value, 10);
-  budgetDisplay.textContent = `Range: $${minVal} – $${maxVal}`;
-}
-budgetMinInput.addEventListener("input", updateBudgetDisplay);
-budgetMaxInput.addEventListener("input", updateBudgetDisplay);
+// ==== Budget slider setup ====
+noUiSlider.create(budgetSlider, {
+  start: [100, 1000],
+  connect: true,
+  range: { min: 0, max: 10000 },
+  step: 50,
+  tooltips: true,
+  format: {
+    to: v => `$${Math.round(v)}`,
+    from: v => Number(v.replace("$", ""))
+  }
+});
 
-// Set output helper
+function getBudgetRange() {
+  const values = budgetSlider.noUiSlider.get(true);
+  return [Math.round(values[0]), Math.round(values[1])];
+}
+
+budgetSlider.noUiSlider.on("update", () => {
+  const [min, max] = getBudgetRange();
+  budgetDisplay.textContent = `Range: $${min} – $${max}`;
+});
+
+// ==== Helpers ====
 function setOutput(msg, asHTML = false) {
-  if (!outputDiv) return;
   if (asHTML) {
     outputDiv.innerHTML = msg;
   } else {
@@ -33,67 +49,95 @@ function setOutput(msg, asHTML = false) {
   }
 }
 
-// Ensure model name
 function ensureResourceName(name) {
   return name?.startsWith("models/") ? name : `models/${name}`;
 }
 
-// Collect selected checkboxes
 function getSelected(group) {
   const checkboxes = group?.querySelectorAll("input[type=checkbox]:checked") || [];
   return Array.from(checkboxes).map(cb => cb.value);
 }
 
-// Markdown → HTML converter with card wrapping
-function markdownToHTML(md) {
-  let html = md
-    .replace(/^### (.*$)/gim, "</div><div class='idea-card'><h3>$1</h3>")
-    .replace(/^## (.*$)/gim, "<h2>$1</h2>")
-    .replace(/^# (.*$)/gim, "<h1>$1</h1>")
-    .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/gim, "<em>$1</em>")
-    .replace(/^- (.*$)/gim, "<li>$1</li>")
-    .replace(/(\r\n|\n){2,}/g, "</p><p>")
-    .replace(/(\r\n|\n)/g, "<br>");
+// Parse AI output → styled HTML
+function formatOutput(text) {
+  // Clean markdown symbols
+  let cleaned = text.replace(/\*/g, "");
 
-  html = html.replace(/(<li>.*<\/li>)/gim, "<ul>$1</ul>");
+  // Split into sections by markers
+  const sections = cleaned.split(/\n(?=[A-Z][^:]+:)/);
 
-  if (!html.startsWith("<div class='idea-card'>")) {
-    html = `<div class='idea-card'>${html}</div>`;
-  }
+  let html = "";
+  sections.forEach(sec => {
+    const [title, ...content] = sec.split(":");
+    const body = content.join(":").trim();
 
-  return html;
+    if (!title || !body) return;
+
+    if (title.toLowerCase().includes("budget")) {
+      // Parse budget into table rows
+      const rows = body.split(/\n|,/).map(r => r.trim()).filter(r => r);
+      const tableRows = rows.map(r => {
+        const parts = r.split(/[-:]/);
+        if (parts.length >= 2) {
+          return `<tr><td>${parts[0].trim()}</td><td>${parts.slice(1).join(":").trim()}</td></tr>`;
+        }
+        return `<tr><td colspan="2">${r}</td></tr>`;
+      }).join("");
+      html += `
+        <div class="idea-card">
+          <h3 class="section-title">${title}</h3>
+          <table class="budget-table"><tbody>${tableRows}</tbody></table>
+        </div>`;
+    } else {
+      html += `
+        <div class="idea-card">
+          <h3 class="section-title">${title}</h3>
+          <p>${body.replace(/\n/g, "<br>")}</p>
+        </div>`;
+    }
+  });
+
+  return `<div class="idea-results">${html}</div>`;
 }
 
-// ==== Generate click ====
-generateBtn?.addEventListener("click", async () => {
+// ==== Generate function ====
+async function generateIdeas(mode = "normal") {
   const prompt = promptInput?.value?.trim();
   if (!prompt) {
     setOutput("⚠️ Please enter a prompt before generating ideas.");
     return;
   }
 
-  const budgetMin = budgetMinInput?.value || "N/A";
-  const budgetMax = budgetMaxInput?.value || "N/A";
+  const [budgetMin, budgetMax] = getBudgetRange();
   const selectedTechs = getSelected(techGroup);
   const selectedIndustries = getSelected(industryGroup);
 
-  const enhancedPrompt = `
+  let enhancedPrompt = `
 User idea/constraints: ${prompt}
 Budget range: $${budgetMin} – $${budgetMax}
 Preferred technologies: ${selectedTechs.join(", ") || "N/A"}
 Industry focus: ${selectedIndustries.join(", ") || "N/A"}
+`;
 
+  if (mode === "normal") {
+    enhancedPrompt += `
 Generate 3–5 concrete computer engineering project ideas. 
 For each idea, include:
 - General description
 - Required technologies
 - Loose budget breakdown (how money would be spent)
 - Similar existing products
-- List of existing vs. novel elements in the project
-`.trim();
+- List of existing vs. novel elements in the project`;
+  } else if (mode === "expand") {
+    enhancedPrompt += `Expand the previously generated ideas with more technical depth, implementation detail, and challenges.`;
+  } else if (mode === "similar") {
+    enhancedPrompt += `Generate 3–5 new ideas that are variations or related to the previously generated ones.`;
+  } else if (mode === "summarize") {
+    enhancedPrompt += `Summarize the previously generated ideas into key bullet points.`;
+  }
 
   setOutput("⏳ Generating ideas...");
+  extraButtons.classList.remove("hidden");
 
   const modelName = ensureResourceName(DEFAULT_MODEL);
 
@@ -126,8 +170,8 @@ For each idea, include:
     const text = parts.map(p => p.text || "").join("").trim();
 
     if (text) {
-      const html = markdownToHTML(text);
-      setOutput(`<div class="idea-results">${html}</div>`, true);
+      const html = formatOutput(text);
+      setOutput(html, true);
     } else if (data.promptFeedback?.blockReason) {
       setOutput(`⚠️ Blocked: ${data.promptFeedback.blockReason}`);
     } else {
@@ -136,4 +180,10 @@ For each idea, include:
   } catch (e) {
     setOutput("❌ Network or fetch error calling Gemini API.");
   }
-});
+}
+
+// ==== Button events ====
+generateBtn?.addEventListener("click", () => generateIdeas("normal"));
+expandBtn?.addEventListener("click", () => generateIdeas("expand"));
+similarBtn?.addEventListener("click", () => generateIdeas("similar"));
+summarizeBtn?.addEventListener("click", () => generateIdeas("summarize"));
