@@ -12,7 +12,7 @@ const similarBtn    = document.getElementById("similar");
 const summarizeBtn  = document.getElementById("summarize");
 
 // ==== Your API key ====
-const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4"; // replace with real Gemini API key
+const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4"; // keep yours here
 const DEFAULT_MODEL = "models/gemini-2.5-flash";
 
 // ==== Budget slider setup ====
@@ -54,24 +54,43 @@ function getSelected(group) {
 
 // Clean + structure AI output
 function formatOutput(text) {
+  // Strip all table junk
   let cleaned = text
+    .replace(/\|/g, " ")
+    .replace(/---+/g, "")
+    .replace(/<\/?table.*?>/gi, "")
+    .replace(/<\/?tr.*?>/gi, "")
+    .replace(/<\/?td.*?>/gi, "")
     .replace(/\*\*/g, "")
-    .replace(/^\s*[-*]\s*/gm, "• ") // convert lists
+    .replace(/\*/g, "")
     .replace(/###/g, "")
     .replace(/##/g, "")
     .trim();
 
-  // Split into project ideas
+  // Split into ideas
   const ideas = cleaned.split(/Project Idea\s*\d+/i).filter(s => s.trim());
 
-  return ideas.map((idea, idx) => `
-    <div class="idea-card fade-in">
-      <h2>💡 Project Idea ${idx + 1}</h2>
-      ${idea
-        .replace(/(General Description|Required Technologies|Budget Breakdown|Similar Products|Novel Elements)/gi,
-          m => `<h3 class="section-title">${m}</h3>`)}
-    </div>
-  `).join("");
+  return ideas.map((idea, idx) => {
+    let formatted = idea.replace(
+      /(General Description|Required Technologies|Budget Breakdown|Similar Products|Novel Elements)/gi,
+      m => `<h3 class="section-title">${m}</h3>`
+    );
+
+    // Convert bullet-like lines
+    formatted = formatted.replace(/(?:^|\n)[-•]\s*(.+)/g, "<li>$1</li>");
+    if (formatted.includes("<li>")) {
+      formatted = `<ul>${formatted}</ul>`;
+    }
+
+    formatted = formatted.replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br>");
+
+    return `
+      <div class="idea-card fade-in">
+        <h2>Project Idea ${idx + 1}</h2>
+        <p>${formatted}</p>
+      </div>
+    `;
+  }).join("");
 }
 
 // ==== Generate function ====
@@ -100,11 +119,11 @@ Generate 3–5 computer engineering project ideas. For each, provide:
 - Required Technologies
 - Budget Breakdown
 - Similar Products
-- Novel Elements`;
+- Novel Elements (what’s unique)`;
   } else if (mode === "expand") {
-    enhancedPrompt += `Expand the previous ideas with deeper technical details and implementation challenges.`;
+    enhancedPrompt += `Expand the previous ideas with deeper technical details.`;
   } else if (mode === "similar") {
-    enhancedPrompt += `Generate 3–5 similar or related ideas with variations.`;
+    enhancedPrompt += `Generate 3–5 related variations of the previous ideas.`;
   } else if (mode === "summarize") {
     enhancedPrompt += `Summarize the previous ideas into concise bullet points.`;
   }
