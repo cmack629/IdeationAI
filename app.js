@@ -2,15 +2,26 @@
 const promptInput     = document.getElementById("prompt");
 const generateBtn     = document.getElementById("generate");
 const outputDiv       = document.getElementById("output");
-const difficultyInput = document.getElementById("difficulty");
-const costInput       = document.getElementById("cost");
+const budgetMinInput  = document.getElementById("budget-min");
+const budgetMaxInput  = document.getElementById("budget-max");
+const budgetDisplay   = document.getElementById("budget-display");
 const techGroup       = document.getElementById("technologies");
+const industryGroup   = document.getElementById("industries");
 
 // ==== Your API key ====
 const API_KEY = "AIzaSyDz7PsTucT9WAhsbBt-s67Y54GqZ6QIuf4"; // replace with your real Gemini API key
 
 // ==== Defaults ====
 const DEFAULT_MODEL = "models/gemini-2.5-flash";
+
+// Update budget display
+function updateBudgetDisplay() {
+  const minVal = parseInt(budgetMinInput.value, 10);
+  const maxVal = parseInt(budgetMaxInput.value, 10);
+  budgetDisplay.textContent = `Range: $${minVal} – $${maxVal}`;
+}
+budgetMinInput.addEventListener("input", updateBudgetDisplay);
+budgetMaxInput.addEventListener("input", updateBudgetDisplay);
 
 // Set output helper
 function setOutput(msg, asHTML = false) {
@@ -27,32 +38,26 @@ function ensureResourceName(name) {
   return name?.startsWith("models/") ? name : `models/${name}`;
 }
 
-// Collect selected technologies
-function getSelectedTechnologies() {
-  const checkboxes = techGroup?.querySelectorAll("input[type=checkbox]:checked") || [];
+// Collect selected checkboxes
+function getSelected(group) {
+  const checkboxes = group?.querySelectorAll("input[type=checkbox]:checked") || [];
   return Array.from(checkboxes).map(cb => cb.value);
 }
 
 // Markdown → HTML converter with card wrapping
 function markdownToHTML(md) {
   let html = md
-    // Headings → card wrappers
     .replace(/^### (.*$)/gim, "</div><div class='idea-card'><h3>$1</h3>")
     .replace(/^## (.*$)/gim, "<h2>$1</h2>")
     .replace(/^# (.*$)/gim, "<h1>$1</h1>")
-    // Bold + italics
     .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/gim, "<em>$1</em>")
-    // Lists
     .replace(/^- (.*$)/gim, "<li>$1</li>")
-    // Paragraphs
     .replace(/(\r\n|\n){2,}/g, "</p><p>")
     .replace(/(\r\n|\n)/g, "<br>");
 
-  // Wrap list items
   html = html.replace(/(<li>.*<\/li>)/gim, "<ul>$1</ul>");
 
-  // Ensure first card wrapper
   if (!html.startsWith("<div class='idea-card'>")) {
     html = `<div class='idea-card'>${html}</div>`;
   }
@@ -68,23 +73,24 @@ generateBtn?.addEventListener("click", async () => {
     return;
   }
 
-  const difficulty = difficultyInput?.value || "N/A";
-  const cost = costInput?.value || "N/A";
-  const selectedTechs = getSelectedTechnologies();
+  const budgetMin = budgetMinInput?.value || "N/A";
+  const budgetMax = budgetMaxInput?.value || "N/A";
+  const selectedTechs = getSelected(techGroup);
+  const selectedIndustries = getSelected(industryGroup);
 
   const enhancedPrompt = `
 User idea/constraints: ${prompt}
-Technical difficulty (1=Beginner, 2=Intermediate, 3=Advanced): ${difficulty}
-Estimated cost range: ${cost}
+Budget range: $${budgetMin} – $${budgetMax}
 Preferred technologies: ${selectedTechs.join(", ") || "N/A"}
+Industry focus: ${selectedIndustries.join(", ") || "N/A"}
 
 Generate 3–5 concrete computer engineering project ideas. 
 For each idea, include:
-- A clear description
+- General description
 - Required technologies
-- Estimated difficulty (numeric scale 1–3)
-- Estimated cost (realistic $ ranges)
-- Why it fits the given constraints
+- Loose budget breakdown (how money would be spent)
+- Similar existing products
+- List of existing vs. novel elements in the project
 `.trim();
 
   setOutput("⏳ Generating ideas...");

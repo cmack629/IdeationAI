@@ -13,22 +13,12 @@
     <label for="prompt">Enter your project idea or constraints:</label>
     <textarea id="prompt" placeholder="e.g., Embedded systems with sensors and low power usage..."></textarea>
 
-    <label for="difficulty">Technical Difficulty:</label>
-    <select id="difficulty">
-      <option value="1">Beginner (1)</option>
-      <option value="2">Intermediate (2)</option>
-      <option value="3">Advanced (3)</option>
-    </select>
-
-    <label for="cost">Estimated Cost Range (USD):</label>
-    <select id="cost">
-      <option value="<$50">Very Low (&lt;$50)</option>
-      <option value="$50–$200">Low ($50–$200)</option>
-      <option value="$200–$500">Medium ($200–$500)</option>
-      <option value="$500–$1000">High ($500–$1000)</option>
-      <option value="$1000–$5000">Very High ($1000–$5000)</option>
-      <option value="$5000+">Extreme ($5000+)</option>
-    </select>
+    <label for="budget">Budget Range (USD):</label>
+    <div class="budget-sliders">
+      <input type="range" id="budget-min" min="0" max="10000" step="50" value="100">
+      <input type="range" id="budget-max" min="0" max="10000" step="50" value="1000">
+    </div>
+    <div id="budget-display">Range: $100 – $1000</div>
 
     <label>Relevant Technologies (check all that apply):</label>
     <div id="technologies" class="checkbox-group">
@@ -50,6 +40,18 @@
       <label><input type="checkbox" value="Software Defined Radio"> Software Defined Radio (SDR)</label>
       <label><input type="checkbox" value="Edge AI"> Edge AI</label>
       <label><input type="checkbox" value="Digital Twin"> Digital Twin Systems</label>
+    </div>
+
+    <label>Industry Focus (check all that apply):</label>
+    <div id="industries" class="checkbox-group">
+      <label><input type="checkbox" value="Healthcare"> Healthcare</label>
+      <label><input type="checkbox" value="Defense"> Defense</label>
+      <label><input type="checkbox" value="Consumer Electronics"> Consumer Electronics</label>
+      <label><input type="checkbox" value="Automotive"> Automotive</label>
+      <label><input type="checkbox" value="Aerospace"> Aerospace</label>
+      <label><input type="checkbox" value="Industrial Automation"> Industrial Automation</label>
+      <label><input type="checkbox" value="Energy"> Energy</label>
+      <label><input type="checkbox" value="Telecommunications"> Telecommunications</label>
     </div>
 
     <button id="generate">Generate Ideas</button>
