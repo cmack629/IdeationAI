@@ -4,65 +4,56 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CE Project Ideator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css">
 </head>
 <body>
   <div class="container">
-    <h1>Computer Engineering Project Ideator</h1>
+    <h1>💡 Computer Engineering Project Ideator</h1>
 
     <label for="prompt">Enter your project idea or constraints:</label>
     <textarea id="prompt" placeholder="e.g., Embedded systems with sensors and low power usage..."></textarea>
 
-    <label for="budget">Budget Range (USD):</label>
+    <label>Budget Range (USD):</label>
     <div id="budget-slider"></div>
     <div id="budget-display">Range: $100 – $1000</div>
 
-    <label>Relevant Technologies (check all that apply):</label>
+    <label>Relevant Technologies:</label>
     <div id="technologies" class="checkbox-group">
       <label><input type="checkbox" value="Embedded Systems"> Embedded Systems</label>
-      <label><input type="checkbox" value="IoT"> Internet of Things (IoT)</label>
-      <label><input type="checkbox" value="AI/ML"> Artificial Intelligence / Machine Learning</label>
+      <label><input type="checkbox" value="IoT"> IoT</label>
+      <label><input type="checkbox" value="AI/ML"> AI/ML</label>
       <label><input type="checkbox" value="Robotics"> Robotics</label>
-      <label><input type="checkbox" value="Networking"> Networking / Protocols</label>
-      <label><input type="checkbox" value="FPGA"> FPGA / Digital Design</label>
-      <label><input type="checkbox" value="Cloud"> Cloud / Edge Computing</label>
+      <label><input type="checkbox" value="Networking"> Networking</label>
+      <label><input type="checkbox" value="FPGA"> FPGA</label>
+      <label><input type="checkbox" value="Cloud"> Cloud</label>
       <label><input type="checkbox" value="Cybersecurity"> Cybersecurity</label>
-      <label><input type="checkbox" value="Wearables"> Wearables</label>
-      <label><input type="checkbox" value="Biomedical"> Biomedical Devices</label>
-      <label><input type="checkbox" value="AR/VR"> AR / VR</label>
-      <label><input type="checkbox" value="Autonomous Vehicles"> Autonomous Vehicles</label>
-      <label><input type="checkbox" value="Smart Homes"> Smart Homes / Automation</label>
-      <label><input type="checkbox" value="Energy Systems"> Renewable / Energy Systems</label>
-      <label><input type="checkbox" value="Signal Processing"> Signal Processing</label>
-      <label><input type="checkbox" value="Software Defined Radio"> Software Defined Radio (SDR)</label>
-      <label><input type="checkbox" value="Edge AI"> Edge AI</label>
-      <label><input type="checkbox" value="Digital Twin"> Digital Twin Systems</label>
+      <label><input type="checkbox" value="Biomedical"> Biomedical</label>
+      <label><input type="checkbox" value="AR/VR"> AR/VR</label>
     </div>
 
-    <label>Industry Focus (check all that apply):</label>
+    <label>Industry Focus:</label>
     <div id="industries" class="checkbox-group">
       <label><input type="checkbox" value="Healthcare"> Healthcare</label>
       <label><input type="checkbox" value="Defense"> Defense</label>
-      <label><input type="checkbox" value="Consumer Electronics"> Consumer Electronics</label>
+      <label><input type="checkbox" value="Consumer Electronics"> Consumer</label>
       <label><input type="checkbox" value="Automotive"> Automotive</label>
       <label><input type="checkbox" value="Aerospace"> Aerospace</label>
-      <label><input type="checkbox" value="Industrial Automation"> Industrial Automation</label>
+      <label><input type="checkbox" value="Industrial Automation"> Industrial</label>
       <label><input type="checkbox" value="Energy"> Energy</label>
-      <label><input type="checkbox" value="Telecommunications"> Telecommunications</label>
+      <label><input type="checkbox" value="Telecom"> Telecom</label>
     </div>
 
-    <button id="generate">Generate Ideas</button>
+    <button id="generate" class="primary-btn">🚀 Generate Ideas</button>
 
     <div id="extra-buttons" class="extra-buttons hidden">
-      <button id="expand">Expand with More Details</button>
-      <button id="similar">Generate Similar Ideas</button>
-      <button id="summarize">Summarize Key Points</button>
+      <button id="expand">🔍 Expand Details</button>
+      <button id="similar">✨ Similar Ideas</button>
+      <button id="summarize">📌 Summarize</button>
     </div>
 
-    <div id="output" class="output-box">
-      <!-- AI response will go here -->
-    </div>
+    <div id="output" class="output-box"></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>

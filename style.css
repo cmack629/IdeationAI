@@ -1,96 +1,90 @@
-/* General page styling */
+/* Global */
 body {
-  font-family: Arial, sans-serif;
-  background: #f4f7f9;
   margin: 0;
-  padding: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #333;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   min-height: 100vh;
 }
 
-/* Center container */
+/* Container */
 .container {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
   padding: 2rem;
   margin: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
   width: 100%;
-  max-width: 800px;
+  max-width: 900px;
+  animation: fadeIn 0.6s ease;
 }
 
-/* Headline */
 h1 {
-  margin-bottom: 1rem;
   text-align: center;
-  color: #333;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  color: #222;
 }
 
-/* Labels */
+/* Inputs */
 label {
   display: block;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  font-weight: bold;
-  color: #444;
+  margin: 1rem 0 0.5rem;
+  font-weight: 600;
 }
 
-/* Prompt input */
 textarea {
   width: 100%;
   height: 120px;
-  padding: 10px;
-  font-size: 1rem;
+  border-radius: 10px;
   border: 1px solid #ccc;
-  border-radius: 8px;
+  padding: 12px;
+  font-size: 1rem;
   resize: vertical;
   margin-bottom: 1rem;
 }
 
-/* Budget slider */
 #budget-slider {
   margin: 1rem 0;
 }
 #budget-display {
-  font-size: 0.9rem;
-  color: #666;
+  font-size: 0.95rem;
   margin-bottom: 1rem;
 }
 
-/* Checkbox group styling */
+/* Checkboxes */
 .checkbox-group {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem 1rem;
-  margin-bottom: 1rem;
 }
 
-.checkbox-group label {
-  font-weight: normal;
-  color: #333;
-}
-
-/* Button */
+/* Buttons */
 button {
-  display: inline-block;
-  background: #007bff;
-  color: white;
+  background: #667eea;
+  color: #fff;
   border: none;
-  padding: 10px 16px;
+  padding: 12px 20px;
   font-size: 0.95rem;
-  font-weight: bold;
-  border-radius: 8px;
+  font-weight: 600;
+  border-radius: 10px;
   cursor: pointer;
-  margin: 0.25rem;
-  transition: background 0.3s;
+  margin: 0.3rem;
+  transition: transform 0.2s, background 0.3s;
 }
-
 button:hover {
-  background: #0056b3;
+  background: #5a67d8;
+  transform: translateY(-2px);
 }
-
+.primary-btn {
+  display: block;
+  margin: 1rem auto;
+  font-size: 1.05rem;
+}
 .extra-buttons {
   text-align: center;
   margin-top: 1rem;
@@ -99,58 +93,40 @@ button:hover {
   display: none;
 }
 
-/* Output box */
+/* Output */
 .output-box {
-  margin-top: 1.5rem;
+  margin-top: 2rem;
   padding: 1rem;
-  background: #fafafa;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  color: #333;
-  white-space: normal;
-  line-height: 1.6;
+  border-radius: 12px;
 }
 
-/* Idea results wrapper */
-.idea-results {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-/* Each idea as a card */
 .idea-card {
   background: #fff;
-  border: 1px solid #ddd;
   border-radius: 12px;
-  padding: 1rem 1.5rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  animation: fadeIn 0.6s ease;
 }
-
-.idea-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+.idea-card h2 {
+  margin-top: 0;
+  color: #764ba2;
 }
-
-.idea-card .section-title {
+.section-title {
+  margin-top: 1rem;
   text-align: center;
-  font-size: 1.25rem;
-  margin: 0.5rem 0 1rem 0;
-  color: #0056b3;
+  font-size: 1.1rem;
+  color: #444;
+  border-bottom: 2px solid #667eea;
+  display: inline-block;
+  padding-bottom: 0.2rem;
 }
 
-/* Budget table */
-.budget-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 0.5rem;
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.budget-table td {
-  border: 1px solid #ccc;
-  padding: 6px 10px;
-  text-align: left;
-}
-.budget-table tr:nth-child(even) {
-  background: #f9f9f9;
+.fade-in {
+  animation: fadeIn 0.7s ease;
 }
