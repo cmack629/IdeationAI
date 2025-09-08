@@ -143,7 +143,7 @@ function extractSection(ideaText, label) {
 // ... (All other code remains the same)
 
 function formatOutput(raw) {
-  // Normalize and clean up the raw text
+  // Normalize and clean the text
   let text = String(raw)
     .replace(/```[\s\S]*?```/g, "")
     .replace(/<\/?[^>]+>/gi, "")
@@ -154,21 +154,9 @@ function formatOutput(raw) {
     .replace(/---+/g, "")
     .trim();
 
-  // A more robust way to split the ideas based on a new line
-  const ideaSeparator = /(?:\n\n|\n)(?=Project Idea \d+:)/i;
-  let ideaBlocks = text.split(ideaSeparator).map(b => b.trim()).filter(Boolean);
-
-  // If the splitting fails, try a different separator
-  if (ideaBlocks.length < 3) {
-    const backupSeparator = /(?:\n\n|\n)(?=Name:)/i;
-    ideaBlocks = text.split(backupSeparator).map(b => b.trim()).filter(Boolean);
-  }
-
-  // Ensure we have at most 3 ideas
-  const kept = ideaBlocks.slice(0, 3);
-
-  // Define sections and their regex patterns
-  const sections = [
+  // Define section titles to parse
+  const sectionTitles = [
+    "Name",
     "General Description",
     "Required Technologies & Budget Breakdown",
     "Timeframe Breakdown",
@@ -176,33 +164,78 @@ function formatOutput(raw) {
     "Similar Products",
     "Novel Elements"
   ];
-  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const sectionTitleSet = new Set(sectionTitles.map(t => t.toLowerCase().replace(/\s/g, "")));
 
-  const itemsHtml = kept.map((ideaText, idx) => {
-    // A more reliable way to get the Name
-    let name = (ideaText.match(/^Name:\s*([^\n]+)/i)?.[1] ||
-                ideaText.match(/^Project Idea \d+:\s*([^\n]+)/i)?.[1] ||
-                `Project Idea ${idx + 1}`).trim();
-    
-    // Extract each section's content
-    const sectionsHtml = sections.map(label => {
-      const re = new RegExp(`^${esc(label)}:\\s*([\\s\\S]*?)(?=\\n(?:${sections.map(esc).join("|")}|Project Idea \\d+|Name):)`, "im");
-      const m = ideaText.match(re);
-      let content = (m && m[1]) ? m[1].trim() : "";
+  let lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  let ideas = [];
+  let currentIdea = null;
+  let currentSection = null;
 
-      const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
-      if (!lines.length) return `<p>N/A</p>`;
-      
+  for (const line of lines) {
+    // Check if the line is a new idea heading
+    if (line.match(/^Project Idea \d+:/i) || line.match(/^Idea \d+[:\-.]/i)) {
+      if (currentIdea) {
+        ideas.push(currentIdea);
+      }
+      currentIdea = {
+        name: line.replace(/^Project Idea \d+:/i, "").trim() || `Project Idea ${ideas.length + 1}`,
+        sections: {}
+      };
+      currentSection = null;
+      continue;
+    }
+
+    // Check if the line is a section title
+    const sectionMatch = line.match(/^([A-Za-z\s&]+?):\s*/);
+    if (sectionMatch && sectionTitleSet.has(sectionMatch[1].toLowerCase().replace(/\s/g, ""))) {
+      currentSection = sectionMatch[1];
+      if (currentIdea) {
+        currentIdea.sections[currentSection] = line.substring(sectionMatch[0].length).trim();
+      }
+    } else if (currentSection && currentIdea) {
+      // Append content to the current section
+      currentIdea.sections[currentSection] += `\n${line}`;
+    }
+  }
+
+  // Push the last idea
+  if (currentIdea) {
+    ideas.push(currentIdea);
+  }
+
+  // Fallback if no ideas were parsed
+  if (ideas.length === 0 && lines.length > 0) {
+    ideas.push({
+      name: `Project Idea 1`,
+      sections: {
+        "General Description": lines.join("\n")
+      }
+    });
+  }
+
+  // Render the output
+  const itemsHtml = ideas.slice(0, 3).map((idea, idx) => {
+    const sectionsHtml = sectionTitles.filter(t => t !== "Name").map(label => {
+      const content = idea.sections[label] || "N/A";
+      const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+
+      let formattedContent;
       const isList = lines.some(l => /^[-•\d]+\s/.test(l));
       if (isList) {
-        return `<ul>${lines.map(l => `<li>${l.replace(/^[-•\d]+\s*/, "")}</li>`).join("")}</ul>`;
+        formattedContent = `<ul>${lines.map(l => `<li>${l.replace(/^[-•\d]+\s*/, "")}</li>`).join("")}</ul>`;
+      } else {
+        formattedContent = lines.map(l => `<p>${l}</p>`).join("");
       }
-      return lines.map(l => `<p>${l}</p>`).join("");
+
+      return `
+        <div class="section-title">${label}<span class="expand-icon">▶</span></div>
+        <div class="section-content">${formattedContent || `<p>N/A</p>`}</div>
+      `;
     }).join("");
 
     return `
       <li class="idea-card fade-in">
-        <h2>${name}</h2>
+        <h2>${idea.name}</h2>
         ${sectionsHtml}
       </li>
     `;
@@ -210,8 +243,6 @@ function formatOutput(raw) {
 
   return `<ol class="idea-list">${itemsHtml}</ol>`;
 }
-
-// ... (All other code remains the same)
 // ==== Attach Expand Events ====
 function attachExpandEvents() {
   document.querySelectorAll(".section-title").forEach(title => {
