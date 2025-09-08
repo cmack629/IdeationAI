@@ -173,15 +173,26 @@ function formatOutput(raw) {
 
   for (const line of lines) {
     // Check if the line is a new idea heading
-    if (line.match(/^Project Idea \d+:/i) || line.match(/^Idea \d+[:\-.]/i)) {
+    const ideaHeadingMatch = line.match(/^Project Idea \d+: (.*)/i) || line.match(/^Idea \d+[:\-.] (.*)/i);
+    if (ideaHeadingMatch) {
       if (currentIdea) {
         ideas.push(currentIdea);
       }
+      // Extract the name directly from the heading line
       currentIdea = {
-        name: line.replace(/^Project Idea \d+:/i, "").trim() || `Project Idea ${ideas.length + 1}`,
+        name: ideaHeadingMatch[1].trim(),
         sections: {}
       };
       currentSection = null;
+      continue;
+    }
+
+    // Check if the line is a specific "Name:" title
+    const nameMatch = line.match(/^Name:\s*(.*)/i);
+    if (nameMatch) {
+      if (currentIdea) {
+        currentIdea.name = nameMatch[1].trim();
+      }
       continue;
     }
 
