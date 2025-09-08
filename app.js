@@ -56,6 +56,10 @@ Complexity & Skills Needed:
 Similar Products:
 Novel Elements:
 
+Project Idea 2:
+...
+
+
 ${enhancedPrompt}
 `.trim();
 
