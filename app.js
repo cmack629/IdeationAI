@@ -90,6 +90,12 @@ Project Idea 2:
 
 // ==== Format Output ====
 function formatOutput(text) {
+  // Cut away any intro before the first "Project Idea"
+const firstIdeaIdx = text.search(/Project\s*Idea\s*1/i);
+if (firstIdeaIdx > -1) {
+  text = text.slice(firstIdeaIdx);
+}
+
   text = text.replace(/\*\*/g,"").replace(/\*/g,"").replace(/\|/g," ").replace(/---+/g,"").replace(/<\/?[^>]+>/gi,"").trim();
 
   let ideaMatches = text.split(/Project\s*Idea\s*\d+[:\-]?\s*/i).filter(s=>s.trim());
