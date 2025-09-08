@@ -54,15 +54,21 @@ Innovation Level: ${innovation}
 Demo Considerations: ${demo}
 
 
-Generate up to 3 computer engineering project ideas. For each, provide:
-- Name
-- General Description
-- Required Technologies & Budget Breakdown
-- Timeframe Breakdown
-- Complexity & Skills Needed
-- Similar Products
-- Novel Elements
-ONLY GIVE THE PROJECT IDEAS IN YOUR RESPONSE. DO NOT RESTATE WHAT YOU ARE GIVING THE USER`;
+Return ONLY the following sections for each idea, with no introduction, no conclusion, and no extra text.
+
+Format exactly like this:
+
+Project Idea 1:
+Name: ...
+General Description: ...
+Required Technologies & Budget Breakdown: ...
+Timeframe Breakdown: ...
+Complexity & Skills Needed: ...
+Similar Products: ...
+Novel Elements: ...
+
+Project Idea 2:
+...`;
 
   setOutput("⏳ Generating ideas...");
 
