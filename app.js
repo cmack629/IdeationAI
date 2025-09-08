@@ -173,17 +173,20 @@ function formatOutput(raw) {
 
   for (const line of lines) {
     // Check for a new idea heading and extract the initial name
-    const ideaHeadingMatch = line.match(/^Project Idea \d+:\s*(.*)/i) || line.match(/^Idea \d+[:\-.]\s*(.*)/i);
+    const ideaHeadingMatch = line.match(/^Project Idea \d+:/i) || line.match(/^Idea \d+[:\-.]/i);
     if (ideaHeadingMatch) {
+      // If we're already in an idea, save it before starting a new one.
       if (currentIdea) {
         ideas.push(currentIdea);
       }
+      // Create the new idea object with a blank name.
+      // The `nameMatch` logic below will be solely responsible for filling it in.
       currentIdea = {
-        name: ideaHeadingMatch[1].trim(), // Extract from heading
+        name: "",
         sections: {}
       };
       currentSection = null;
-      continue;
+      continue; // Move to the next line
     }
 
     // Check for a specific "Name:" line and overwrite the name
