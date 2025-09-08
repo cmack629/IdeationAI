@@ -78,80 +78,107 @@ ${enhancedPrompt}
 }
 
 // ==== Format Output ====
-function formatOutput(text) {
-  // Basic cleanup
-  text = text
+function formatOutput(raw) {
+  // --- Cleanup ---
+  let text = raw
     .replace(/\*\*/g, "")
     .replace(/\*/g, "")
     .replace(/\|/g, " ")
     .replace(/---+/g, "")
     .replace(/<\/?[^>]+>/gi, "")
+    .replace(/\r/g, "")
     .trim();
 
-  // Cut everything before the first recognizable idea heading
-  const firstIdeaIdx = text.search(/(?:^|\n)\s*(?:Project\s*Idea|Idea|\d+\)|\d+\.)\s*\d*\s*[:\-]?\s*/i);
-  if (firstIdeaIdx > -1) {
-    text = text.slice(firstIdeaIdx);
+  // --- Split into ideas robustly (line-by-line tokenizer) ---
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+
+  // Idea heading patterns we accept
+  const ideaHeadRE = /^(?:project\s*idea|idea)\s*\d+\s*[:\-\.)]?|^\d+\s*[.)]\s+/i;
+
+  const ideaBlocks = [];
+  let cur = null;
+
+  for (const line of lines) {
+    if (ideaHeadRE.test(line)) {
+      // start new idea
+      if (cur) ideaBlocks.push(cur);
+      cur = { heading: line, body: [] };
+    } else {
+      // ignore preamble until first idea appears
+      if (cur) cur.body.push(line);
+    }
+  }
+  if (cur) ideaBlocks.push(cur);
+
+  // If model gave no recognizable headings, treat the entire text as one idea
+  if (ideaBlocks.length === 0 && text) {
+    ideaBlocks.push({ heading: "Project Idea 1:", body: lines });
   }
 
-  // Split on common "idea" heading patterns
-  const splitRegex = /(?:^|\n)\s*(?:Project\s*Idea|Idea|\d+\)|\d+\.)\s*\d*\s*[:\-]?\s*/gi;
-  let ideaMatches = text.split(splitRegex).map(s => s.trim()).filter(Boolean);
+  // Only keep up to 3
+  const kept = ideaBlocks.slice(0, 3);
 
-  // If model didn’t use headings, fall back to a single block
-  if (ideaMatches.length === 0 && text) {
-    ideaMatches = [text.trim()];
-  }
+  // Sections we want to extract
+  const sections = [
+    "General Description",
+    "Required Technologies & Budget Breakdown",
+    "Timeframe Breakdown",
+    "Complexity & Skills Needed",
+    "Similar Products",
+    "Novel Elements"
+  ];
 
-  // Only keep up to 3 ideas, but never re-prepend the full text
-  ideaMatches = ideaMatches.slice(0, 3);
+  // Helper to escape for RegExp
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  return ideaMatches.map(idea => {
-    // Break into lines and find a name/title
-    let lines = idea.split("\n").map(l => l.trim()).filter(Boolean);
+  // Build a lookahead that stops at: next section OR next idea heading OR end
+  const sectionStopLA = "(?=\\n\\s*(?:" +
+    sections.map(esc).join("|") +
+    ")\\s*:?\\s*|\\n\\s*(?:" +
+    "(?:Project\\s*Idea|Idea)\\s*\\d+\\s*[:\\-\\.)]?|\\d+\\s*[\\.)]\\s+)" +
+    "|$)";
 
-    // Try explicit "Name:" first
-    let name = (lines.find(l => /^Name\s*:/i.test(l)) || "")
-      .replace(/^Name\s*:\s*/i, "")
-      .trim();
+  // Render each idea card
+  const cardsHtml = kept.map((blk, idx) => {
+    const ideaText = [blk.heading, ...blk.body].join("\n").trim();
 
-    // If not present, try to synthesize a title from the first non-generic line
-    if (!name) {
-      const genericIntro = /^(here (are|is)|some (good|great)|below (are|is)|please find)/i;
-      const titleLine = lines.find(l => !genericIntro.test(l)) || "Project Idea";
-      // Truncate at punctuation to make it title-ish
-      name = titleLine.split(/[.:;-]/)[0].slice(0, 120).trim() || "Project Idea";
+    // Title: prefer explicit Name: line, else derive from heading/body
+    let name = "";
+    const nameLine = blk.body.find(l => /^Name\s*:/i.test(l));
+    if (nameLine) {
+      name = nameLine.replace(/^Name\s*:\s*/i, "").trim();
+    } else {
+      // Use heading text without the leading numbering
+      name = blk.heading
+        .replace(/^(?:project\s*idea|idea)\s*\d+\s*[:\-\.])?\s*/i, "")
+        .replace(/^\d+\s*[.)]\s+/, "")
+        .trim();
+      if (!name) {
+        // fallback: first meaningful line in body
+        const genericRE = /^(here (are|is)|some (good|great)|below (are|is))/i;
+        name = (blk.body.find(l => !/^Name\s*:/i.test(l) && !genericRE.test(l)) || "Project Idea").split(/[.:;-]/)[0].slice(0, 120).trim();
+      }
     }
 
-    const sections = [
-      "General Description",
-      "Required Technologies & Budget Breakdown",
-      "Timeframe Breakdown",
-      "Complexity & Skills Needed",
-      "Similar Products",
-      "Novel Elements"
-    ];
-
-    // Build each section by greedy-searching between section headers
-    const contentHtml = sections.map((sec, idx) => {
-      const nextHeads = sections.slice(idx + 1).map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
-      const regex = new RegExp(
-        sec.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*:?\\s*([\\s\\S]*?)" + (nextHeads ? "(?:" + nextHeads + "|$)" : "$"),
-        "i"
+    // Extract section content safely
+    const contentHtml = sections.map((sec, i) => {
+      const secRE = new RegExp(
+        "^\\s*" + esc(sec) + "\\s*:?\\s*([\\s\\S]*?)" + sectionStopLA,
+        "im"
       );
-      const match = idea.match(regex);
-      let content = match ? match[1].trim() : "N/A";
+      const m = ideaText.match(secRE);
+      let content = (m && m[1] ? m[1].trim() : "N/A");
 
-      // Bulletize if the section looks like a list
-      let secLines = content.split("\n").map(l => l.trim()).filter(Boolean);
-      if (secLines.some(l => /^[-•\d]+\)/.test(l) || /^[-•]/.test(l) || /^\d+\./.test(l))) {
-        content = "<ul>" + secLines.map(l => `<li>${l.replace(/^[-•\d. )]+\s*/, "")}</li>`).join("") + "</ul>";
+      // Bulletize if it looks like a list
+      let ls = content.split("\n").map(s => s.trim()).filter(Boolean);
+      if (ls.some(l => /^[-•\d]+[.)]?\s+/.test(l))) {
+        content = "<ul>" + ls.map(l => `<li>${l.replace(/^[-•\d. )]+\s*/, "")}</li>`).join("") + "</ul>";
       } else {
-        content = secLines.map(l => `<p>${l}</p>`).join("");
+        content = ls.length ? ls.map(l => `<p>${l}</p>`).join("") : "<p>N/A</p>";
       }
 
       return `<div class="section-title">${sec}<span class="expand-icon">▶</span></div>
-              <div class="section-content">${content || "<p>N/A</p>"}</div>`;
+              <div class="section-content">${content}</div>`;
     }).join("");
 
     return `<div class="idea-card fade-in">
@@ -159,6 +186,8 @@ function formatOutput(text) {
               ${contentHtml}
             </div>`;
   }).join("");
+
+  return cardsHtml;
 }
 
 
