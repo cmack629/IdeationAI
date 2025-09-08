@@ -96,7 +96,7 @@ if (firstIdeaIdx > -1) {
   text = text.slice(firstIdeaIdx);
 }
 
-  
+  text = text.replace(/\*\*/g,"").replace(/\*/g,"").replace(/\|/g," ").replace(/---+/g,"").replace(/<\/?[^>]+>/gi,"").trim();
 
   let ideaMatches = text.split(/Project\s*Idea\s*\d+[:\-]?\s*/i).filter(s=>s.trim());
   if(ideaMatches.length<3 && text.trim()){ ideaMatches = [text.trim(), ...ideaMatches]; }
