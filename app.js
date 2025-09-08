@@ -172,26 +172,25 @@ function formatOutput(raw) {
   let currentSection = null;
 
   for (const line of lines) {
-    // Check if the line is a new idea heading
-    const ideaHeadingMatch = line.match(/^Project Idea \d+: (.*)/i) || line.match(/^Idea \d+[:\-.] (.*)/i);
+    // Check for a new idea heading and extract the initial name
+    const ideaHeadingMatch = line.match(/^Project Idea \d+:\s*(.*)/i) || line.match(/^Idea \d+[:\-.]\s*(.*)/i);
     if (ideaHeadingMatch) {
       if (currentIdea) {
         ideas.push(currentIdea);
       }
-      // Extract the name directly from the heading line
       currentIdea = {
-        name: ideaHeadingMatch[1].trim(),
+        name: ideaHeadingMatch[1].trim(), // Extract from heading
         sections: {}
       };
       currentSection = null;
       continue;
     }
 
-    // Check if the line is a specific "Name:" title
+    // Check for a specific "Name:" line and overwrite the name
     const nameMatch = line.match(/^Name:\s*(.*)/i);
     if (nameMatch) {
       if (currentIdea) {
-        currentIdea.name = nameMatch[1].trim();
+        currentIdea.name = nameMatch[1].trim(); // Overwrite with explicit name
       }
       continue;
     }
@@ -214,18 +213,11 @@ function formatOutput(raw) {
     ideas.push(currentIdea);
   }
 
-  // Fallback if no ideas were parsed
-  if (ideas.length === 0 && lines.length > 0) {
-    ideas.push({
-      name: `Project Idea 1`,
-      sections: {
-        "General Description": lines.join("\n")
-      }
-    });
-  }
-
   // Render the output
   const itemsHtml = ideas.slice(0, 3).map((idea, idx) => {
+    // Final check for a name if none was found
+    const finalName = idea.name || `Project Idea ${idx + 1}`;
+
     const sectionsHtml = sectionTitles.filter(t => t !== "Name").map(label => {
       const content = idea.sections[label] || "N/A";
       const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
@@ -246,7 +238,7 @@ function formatOutput(raw) {
 
     return `
       <li class="idea-card fade-in">
-        <h2>${idea.name}</h2>
+        <h2>${finalName}</h2>
         ${sectionsHtml}
       </li>
     `;
