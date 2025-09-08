@@ -32,477 +32,228 @@ function getSelected(group){ const checked=group.querySelectorAll("input[type=ch
 async function generateIdeas() {
   const prompt = promptInput.value.trim();
   const apiKey = apiKeyInput.value.trim();
-  if (!prompt) { setOutput("⚠️ Please enter a prompt."); return; }
-  if (!apiKey) { setOutput("⚠️ Please enter your API key."); return; }
+  if(!prompt){ setOutput("⚠️ Please enter a prompt."); return; }
+  if(!apiKey){ setOutput("⚠️ Please enter your API key."); return; }
 
-  const [budgetMin, budgetMax] = getBudgetRange();
-  const [timeMin, timeMax] = getTimeframeRange();
-  const techs = getSelected(techGroup);
-  const inds  = getSelected(industryGroup);
+  const [budgetMin,budgetMax] = getBudgetRange();
+  const [timeMin,timeMax] = getTimeframeRange();
+  const selectedTechs = getSelected(techGroup);
+  const selectedIndustries = getSelected(industryGroup);
   const complexity = document.querySelector('input[name="complexity"]:checked')?.value || "Medium";
   const innovation = innovationSelect.value;
   const demo = demoSelect.value;
 
-  const constraints = `
-Generate EXACTLY 3 computer engineering project ideas that satisfy:
-
+  let enhancedPrompt = `
 User idea/constraints: ${prompt}
 Budget range: $${budgetMin} – $${budgetMax}
 Timeframe: ${timeMin} – ${timeMax} months
-Preferred technologies: ${techs.join(", ") || "N/A"}
-Industry focus: ${inds.join(", ") || "N/A"}
+Preferred technologies: ${selectedTechs.join(", ") || "N/A"}
+Industry focus: ${selectedIndustries.join(", ") || "N/A"}
 Project Complexity: ${complexity}
 Innovation Level: ${innovation}
 Demo Considerations: ${demo}
-`.trim();
 
-  // REST requires UPPER-CASE schema types
-  const responseSchema = {
-    type: "OBJECT",
-    properties: {
-      ideas: {
-        type: "ARRAY",
-        items: {
-          type: "OBJECT",
-          properties: {
-            name: { type: "STRING" },
-            generalDescription: { type: "STRING" },
-            requiredTechBudget: {
-              type: "ARRAY",
-              items: {
-                type: "OBJECT",
-                properties: {
-                  item: { type: "STRING" },
-                  cost: { type: "NUMBER" } // optional; we won't require it
-                },
-                required: ["item"]
-              }
-            },
-            timeframeBreakdown: {
-              type: "ARRAY",
-              items: {
-                type: "OBJECT",
-                properties: {
-                  phase: { type: "STRING" },
-                  months: { type: "NUMBER" }
-                },
-                required: ["phase", "months"]
-              }
-            },
-            complexitySkillsNeeded: { type: "ARRAY", items: { type: "STRING" } },
-            similarProducts:       { type: "ARRAY", items: { type: "STRING" } },
-            novelElements:         { type: "ARRAY", items: { type: "STRING" } }
-          },
-          required: [
-            "name",
-            "generalDescription",
-            "requiredTechBudget",
-            "timeframeBreakdown",
-            "complexitySkillsNeeded",
-            "similarProducts",
-            "novelElements"
-          ]
-        }
-      }
-    },
-    required: ["ideas"]
-  };
 
-  const systemInstruction = `
-Return ONLY valid JSON that matches the provided schema.
-No markdown, no headings, no extra text — JSON only.
-`.trim();
+Return ONLY the following sections for each idea, with no introduction, no conclusion, and no extra text.
+
+Output exactly 3 ideas.
+
+Format exactly like this:
+
+Project Idea 1:
+Name: ...
+General Description: ...
+Required Technologies & Budget Breakdown: ...
+Timeframe Breakdown: ...
+Complexity & Skills Needed: ...
+Similar Products: ...
+Novel Elements: ...
+
+Project Idea 2:
+Name: ...
+General Description: ...
+Required Technologies & Budget Breakdown: ...
+Timeframe Breakdown: ...
+Complexity & Skills Needed: ...
+Similar Products: ...
+Novel Elements: ...
+
+Project Idea 3:
+Name: ...
+General Description: ...
+Required Technologies & Budget Breakdown: ...
+Timeframe Breakdown: ...
+Complexity & Skills Needed: ...
+Similar Products: ...
+Novel Elements: ...`;
 
   setOutput("⏳ Generating ideas...");
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/${DEFAULT_MODEL}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `${systemInstruction}\n\n${constraints}` }] }],
-          generationConfig: {
-            responseMimeType: "application/json",   // <-- camelCase
-            responseSchema: responseSchema          // <-- camelCase + UPPER-CASE types
-          }
-        })
-      }
-    );
-
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/${DEFAULT_MODEL}:generateContent`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-goog-api-key":apiKey},
+      body: JSON.stringify({contents:[{parts:[{text:enhancedPrompt}]}],generationConfig:{temperature:0.7}})
+    });
     const data = await res.json();
-    if (data.error) { setOutput(`❌ API Error: ${data.error.message}`); return; }
+    if(data.error){ setOutput(`❌ API Error: ${data.error.message}`); return; }
+    const text = data?.candidates?.[0]?.content?.parts?.map(p=>p.text||"").join("").trim();
+    if(!text){ setOutput("⚠️ No response from Gemini."); return; }
 
-    const raw = (data?.candidates?.[0]?.content?.parts || [])
-      .map(p => p.text ?? "")
-      .join("")
-      .trim();
+    setOutput(formatOutput(text), true);
+    attachExpandEvents();
+  } catch { setOutput("❌ Network or fetch error."); }
+}
 
-    console.log("Gemini raw JSON:", raw); // <-- helpful for debugging
+function formatOutput(raw) {
+  // ---------- Normalize & de-noise ----------
+  let text = String(raw)
+    .replace(/```[\s\S]*?```/g, "")     // strip code fences if any
+    .replace(/<\/?[^>]+>/gi, "")        // strip any HTML tags
+    .replace(/\r/g, "")
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/\|/g, " ")
+    .replace(/---+/g, "")
+    .trim();
 
-    const parsed = parseModelJSON(raw);
-    if (!parsed || !Array.isArray(parsed.ideas)) {
-      setOutput(
-        `⚠️ Could not parse JSON. Raw response:<br><pre>${escapeHTML(raw)}</pre>`,
-        true
-      );
-      return;
+  // --- Force idea markers to line starts (handles mid-line headings) ---
+  // Put newlines around headings like "Project Idea 3:" / "Idea 2 -" / "2)"/"2."
+  text = text
+    .replace(/(?:\s*)(?=((?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?))/gi, "\n") // newline before heading (lookahead)
+    .replace(/((?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?)/gi, "\n$1\n")        // heading isolated by newlines
+    .replace(/(?:\s*)(?=(?:\bName\s*:))/gi, "\n")                              // newline before "Name:"
+    .replace(/\bName\s*:/gi, "\nName:\n");                                     // put "Name:" on its own line
+
+  // ---------- Define tolerant markers ----------
+  const ideaHeadRE = /^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?|\d+\s*[.)]\s+/i;
+  const nameHeadRE = /^\s*Name\s*:/i;
+
+  // ---------- Drop preamble (anything before first idea heading OR Name:) ----------
+  let lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  let firstIdx = lines.findIndex(l => ideaHeadRE.test(l) || nameHeadRE.test(l));
+  if (firstIdx > 0) {
+    lines = lines.slice(firstIdx);
+  }
+
+  // ---------- Group into idea blocks on heading OR Name: ----------
+  let blocks = [];
+  let cur = null;
+
+  for (const line of lines) {
+    if (ideaHeadRE.test(line) || nameHeadRE.test(line)) {
+      if (cur) blocks.push(cur);
+      cur = { heading: ideaHeadRE.test(line) ? line : "Name:", body: [] };
+      if (nameHeadRE.test(line)) cur.body.push(line); // keep "Name:" line in body for extraction
+    } else if (cur) {
+      cur.body.push(line);
+    }
+  }
+  if (cur) blocks.push(cur);
+
+  // ---------- Rescue split: if fewer than 3, split extra Name: inside blocks ----------
+  if (blocks.length < 3) {
+    const rescued = [];
+    for (const b of blocks) {
+      // If this block contains multiple Name: entries, split them into separate ideas
+      const idxs = b.body
+        .map((l, i) => ({ l, i }))
+        .filter(x => /^Name\s*:/i.test(x.l))
+        .map(x => x.i);
+
+      if (idxs.length > 1) {
+        for (let k = 0; k < idxs.length; k++) {
+          const start = idxs[k];
+          const end = (k + 1 < idxs.length) ? idxs[k + 1] : b.body.length;
+          const slice = b.body.slice(start, end);
+          rescued.push({ heading: "Name:", body: slice });
+        }
+      } else {
+        rescued.push(b);
+      }
+    }
+    blocks = rescued;
+  }
+
+  // If still nothing, treat whole text as one idea
+  if (blocks.length === 0 && lines.length) {
+    blocks.push({ heading: "Project Idea 1:", body: lines });
+  }
+
+  // Keep up to 3 *after* rescue
+  const kept = blocks.slice(0, 3);
+
+  // ---------- Sections ----------
+  const sections = [
+    "General Description",
+    "Required Technologies & Budget Breakdown",
+    "Timeframe Breakdown",
+    "Complexity & Skills Needed",
+    "Similar Products",
+    "Novel Elements"
+  ];
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  const sectionStopLA =
+    "(?=\\n\\s*(?:" +
+    sections.map(esc).join("|") +
+    ")\\s*:?\\s*|\\n\\s*(?:(?:Project\\s*Idea|Idea)\\s*\\d+\\s*[:\\-.)]?|\\d+\\s*[\\.)]\\s+|Name\\s*:)\\s*|$)";
+
+  // ---------- Render ----------
+  const itemsHtml = kept.map((blk, idx) => {
+    const ideaText = [blk.heading, ...blk.body].join("\n").trim();
+
+    // Title: explicit Name: first
+    let name = "";
+    const nameLine = blk.body.find(l => /^Name\s*:/i.test(l));
+    if (nameLine) {
+      name = nameLine.replace(/^Name\s*:\s*/i, "").trim();
+    }
+    if (!name) {
+      name = blk.heading
+        .replace(/^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?\s*/i, "")
+        .replace(/^\d+\s*[.)]\s+/, "")
+        .trim();
+
+      if (!name) {
+        const generic = /^(here (are|is)|some (good|great)|below (are|is))/i;
+        name = (blk.body.find(l => !/^Name\s*:/i.test(l) && !generic.test(l)) || "Project Idea")
+          .split(/[.:;-]/)[0]
+          .slice(0, 120)
+          .trim();
+      }
     }
 
-    setOutput(renderIdeasJSON(parsed.ideas.slice(0, 3)), true);
-    attachExpandEvents();
-  } catch (e) {
-    console.error(e);
-    setOutput("❌ Network or fetch error.");
-  }
-}
+    const extractSection = (label) => {
+      const re = new RegExp(
+        "^\\s*" + esc(label) + "\\s*:?\\s*([\\s\\S]*?)" + sectionStopLA,
+        "im"
+      );
+      const m = ideaText.match(re);
+      let content = (m && m[1] ? m[1].trim() : "");
+      const ls = content.split("\n").map(x => x.trim()).filter(Boolean);
+      if (!ls.length) return "<p>N/A</p>";
+      if (ls.some(x => /^[-•\d]+[.)]?\s+/.test(x))) {
+        return "<ul>" + ls.map(x => `<li>${x.replace(/^[-•\d. )]+\s*/, "")}</li>`).join("") + "</ul>";
+      }
+      return ls.map(x => `<p>${x}</p>`).join("");
+    };
 
-function parseModelJSON(s) {
-  const start = s.indexOf("{");
-  const end = s.lastIndexOf("}");
-  if (start === -1 || end === -1 || end <= start) return null;
-  try {
-    const obj = JSON.parse(s.slice(start, end + 1));
-    return typeof obj === "string" ? JSON.parse(obj) : obj;
-  } catch { return null; }
-}
-
-function escapeHTML(str) {
-  return String(str).replace(/[&<>"']/g, m => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  }[m]));
-}
-
-function currency(n) {
-  if (typeof n !== "number" || Number.isNaN(n)) return "";
-  return "$" + n.toLocaleString();
-}
-
-function renderIdeasJSON(ideas) {
-  return ideas.map((idea, idx) => {
-    const name = escapeHTML(idea?.name || `Project Idea ${idx + 1}`);
-
-    const genDesc = idea?.generalDescription
-      ? `<p>${escapeHTML(idea.generalDescription)}</p>` : "<p>N/A</p>";
-
-    const techBudget = Array.isArray(idea?.requiredTechBudget) && idea.requiredTechBudget.length
-      ? `<ul>` + idea.requiredTechBudget.map(row => {
-          const item = escapeHTML(row?.item ?? "Item");
-          const cost = (typeof row?.cost === "number") ? ` — ${currency(row.cost)}` : "";
-          return `<li>${item}${cost}</li>`;
-        }).join("") + `</ul>`
-      : "<p>N/A</p>";
-
-    const timeframe = Array.isArray(idea?.timeframeBreakdown) && idea.timeframeBreakdown.length
-      ? `<ul>` + idea.timeframeBreakdown.map(ph => {
-          const phase  = escapeHTML(ph?.phase ?? "Phase");
-          const months = (typeof ph?.months === "number") ? ` — ${ph.months} mo` : "";
-          return `<li>${phase}${months}</li>`;
-        }).join("") + `</ul>`
-      : "<p>N/A</p>";
-
-    const skills = Array.isArray(idea?.complexitySkillsNeeded) && idea.complexitySkillsNeeded.length
-      ? `<ul>` + idea.complexitySkillsNeeded.map(s => `<li>${escapeHTML(s)}</li>`).join("") + `</ul>`
-      : "<p>N/A</p>";
-
-    const similar = Array.isArray(idea?.similarProducts) && idea.similarProducts.length
-      ? `<ul>` + idea.similarProducts.map(s => `<li>${escapeHTML(s)}</li>`).join("") + `</ul>`
-      : "<p>N/A</p>";
-
-    const novel = Array.isArray(idea?.novelElements) && idea.novelElements.length
-      ? `<ul>` + idea.novelElements.map(s => `<li>${escapeHTML(s)}</li>`).join("") + `</ul>`
-      : "<p>N/A</p>";
+    const sectionsHtml = sections.map(label => `
+      <div class="section-title">${label}<span class="expand-icon">▶</span></div>
+      <div class="section-content">${extractSection(label)}</div>
+    `).join("");
 
     return `
-      <div class="idea-card fade-in">
-        <h2>${name}</h2>
-
-        <div class="section-title">General Description<span class="expand-icon">▶</span></div>
-        <div class="section-content">${genDesc}</div>
-
-        <div class="section-title">Required Technologies & Budget Breakdown<span class="expand-icon">▶</span></div>
-        <div class="section-content">${techBudget}</div>
-
-        <div class="section-title">Timeframe Breakdown<span class="expand-icon">▶</span></div>
-        <div class="section-content">${timeframe}</div>
-
-        <div class="section-title">Complexity & Skills Needed<span class="expand-icon">▶</span></div>
-        <div class="section-content">${skills}</div>
-
-        <div class="section-title">Similar Products<span class="expand-icon">▶</span></div>
-        <div class="section-content">${similar}</div>
-
-        <div class="section-title">Novel Elements<span class="expand-icon">▶</span></div>
-        <div class="section-content">${novel}</div>
-      </div>
+      <li class="idea-card fade-in">
+        <h2>${name || `Project Idea ${idx + 1}`}</h2>
+        ${sectionsHtml}
+      </li>
     `;
   }).join("");
+
+  return `<ol class="idea-list">${itemsHtml}</ol>`;
 }
-
-
-// function formatOutput(raw) {
-//   // ---------- Normalize & clean ----------
-//   let text = String(raw)
-//     .replace(/```[\s\S]*?```/g, "")   // strip code fences
-//     .replace(/<\/?[^>]+>/gi, "")      // strip HTML
-//     .replace(/\r/g, "")
-//     .replace(/\*\*/g, "")
-//     .replace(/\*/g, "")
-//     .replace(/\|/g, " ")
-//     .replace(/---+/g, "")
-//     .trim();
-
-//   // Put newlines around common markers so they land at line starts
-//   text = text
-//     // Idea headings (Project Idea 1:, Idea 2 -, 2), 2.)
-//     .replace(/(?:\s*)(?=((?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?|\b\d+\s*[.)]\s+))/gi, "\n")
-//     .replace(/((?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?|\b\d+\s*[.)]\s+)/gi, "\n$1\n")
-//     // Name:
-//     .replace(/(?:\s*)(?=(\bName\s*:))/gi, "\n")
-//     .replace(/\bName\s*:/gi, "\nName:\n");
-
-//   const ideaHeadRE = /^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?|\d+\s*[.)]\s+/i;
-//   const nameHeadRE = /^\s*Name\s*:/i;
-
-//   // Trim any preamble before first idea or Name:
-//   let lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-//   const firstIdx = lines.findIndex(l => ideaHeadRE.test(l) || nameHeadRE.test(l));
-//   if (firstIdx > 0) lines = lines.slice(firstIdx);
-
-//   // Group into idea blocks on heading OR Name:
-//   let blocks = [];
-//   let cur = null;
-//   for (const line of lines) {
-//     if (ideaHeadRE.test(line) || nameHeadRE.test(line)) {
-//       if (cur) blocks.push(cur);
-//       cur = { heading: ideaHeadRE.test(line) ? line : "Name:", body: [] };
-//       if (nameHeadRE.test(line)) cur.body.push(line); // keep Name: line so we can read it
-//     } else if (cur) {
-//       cur.body.push(line);
-//     }
-//   }
-//   if (cur) blocks.push(cur);
-
-//   // Rescue: if a block has multiple Name: lines, split them into separate ideas
-//   if (blocks.length < 3) {
-//     const rescued = [];
-//     for (const b of blocks) {
-//       const idxs = b.body.map((l, i) => /^Name\s*:/i.test(l) ? i : -1).filter(i => i >= 0);
-//       if (idxs.length > 1) {
-//         for (let k = 0; k < idxs.length; k++) {
-//           const start = idxs[k];
-//           const end = (k + 1 < idxs.length) ? idxs[k + 1] : b.body.length;
-//           rescued.push({ heading: "Name:", body: b.body.slice(start, end) });
-//         }
-//       } else {
-//         rescued.push(b);
-//       }
-//     }
-//     blocks = rescued;
-//   }
-
-//   if (blocks.length === 0 && lines.length) {
-//     blocks.push({ heading: "Project Idea 1:", body: lines });
-//   }
-
-//   // Keep up to 3 ideas
-//   const kept = blocks.slice(0, 3);
-
-//   // ---------- Section aliases (canonical -> synonyms) ----------
-//   const sectionAliases = {
-//     "General Description": [
-//       "General Description", "Overview", "Description"
-//     ],
-//     "Required Technologies & Budget Breakdown": [
-//       "Required Technologies & Budget Breakdown", "Required Technologies", "Tech Stack",
-//       "Bill of Materials", "BOM", "Budget", "Cost", "Costs"
-//     ],
-//     "Timeframe Breakdown": [
-//       "Timeframe Breakdown", "Timeline", "Schedule", "Milestones", "Milestone"
-//     ],
-//     "Complexity & Skills Needed": [
-//       "Complexity & Skills Needed", "Skills Needed", "Skill Requirements", "Complexity"
-//     ],
-//     "Similar Products": [
-//       "Similar Products", "Comparables", "Existing Solutions", "Competitors", "Competition"
-//     ],
-//     "Novel Elements": [
-//       "Novel Elements", "Differentiators", "Innovation", "What's New", "Uniqueness"
-//     ]
-//   };
-//   const canonicalOrder = Object.keys(sectionAliases);
-//   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-//   // Build a regex that MATCHES headers even when the first content is inline after the colon.
-//   // We will scan per-idea text with this.
-//   const anyLabel = Object.values(sectionAliases).flat();
-//   const anyLabelGroup = "(?:" + anyLabel.map(esc).join("|") + ")";
-//   const sectionAnyRE = new RegExp(
-//     "(?:^|\\n)\\s*(" + anyLabelGroup + ")\\s*:\\s*(.*)$", // group 1 = label, group 2 = inline content (may be empty)
-//     "gmi"
-//   );
-
-//   // Helper: map a found label to its canonical name
-//   function toCanonical(label) {
-//     const low = label.trim().toLowerCase();
-//     for (const canon of canonicalOrder) {
-//       for (const alias of sectionAliases[canon]) {
-//         if (alias.toLowerCase() === low) return canon;
-//       }
-//     }
-//     return null;
-//   }
-
-//   // Render helpers
-//   const looksList = (ls) => ls.some(x => /^[-•\d]+[.)]?\s+/.test(x));
-//   const toHtml = (ls) => {
-//     if (!ls.length) return "<p>N/A</p>";
-//     if (looksList(ls)) {
-//       return "<ul>" + ls.map(x => `<li>${x.replace(/^[-•\d. )]+\s*/, "")}</li>`).join("") + "</ul>";
-//     }
-//     return ls.map(x => `<p>${x}</p>`).join("");
-//   };
-
-//   // ---------- Per-idea render ----------
-//   const itemsHtml = kept.map((blk, idx) => {
-//     // Build the idea text as lines (keep original order)
-//     const ideaLines = [blk.heading, ...blk.body].join("\n");
-
-//     // Title from Name: … else derive
-//     let title = "";
-//     const nameLine = blk.body.find(l => /^Name\s*:/i.test(l));
-//     if (nameLine) {
-//       title = nameLine.replace(/^Name\s*:\s*/i, "").trim();
-//     }
-//     if (!title) {
-//       title = blk.heading
-//         .replace(/^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?\s*/i, "")
-//         .replace(/^\d+\s*[.)]\s+/, "")
-//         .trim();
-//       if (!title) {
-//         const generic = /^(here (are|is)|some (good|great)|below (are|is))/i;
-//         title = (blk.body.find(l => !/^Name\s*:/i.test(l) && !generic.test(l)) || "Project Idea")
-//           .split(/[.:;-]/)[0]
-//           .slice(0, 120)
-//           .trim();
-//       }
-//     }
-
-//     // ---- Extract sections allowing inline content after label ----
-//     // We'll iterate all label matches (with global regex), record their start line index,
-//     // capture inline content on the header line, then collect subsequent lines until the next label/idea boundary.
-//     const sectionMap = new Map(); // canonical -> array of lines
-
-//     // Precompute boundary lines that indicate next idea start
-//     const ideaBoundaryRE = /^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?|\d+\s*[.)]\s+|Name\s*:/i;
-//     const allLines = ideaLines.split("\n");
-
-//     // Find indices of section headers + inline content
-//     const headerHits = []; // { lineIdx, canon, inline }
-//     for (let i = 0; i < allLines.length; i++) {
-//       const line = allLines[i];
-//       const m = line.match(new RegExp("^\\s*(" + anyLabelGroup + ")\\s*:\\s*(.*)$", "i"));
-//       if (m) {
-//         const canon = toCanonical(m[1]);
-//         if (canon) headerHits.push({ lineIdx: i, canon, inline: (m[2] || "").trim() });
-//       }
-//     }
-
-//     // If we found explicit headers, collect their bodies
-//     if (headerHits.length) {
-//       for (let h = 0; h < headerHits.length; h++) {
-//         const { lineIdx, canon, inline } = headerHits[h];
-//         const nextHeaderLine = (h + 1 < headerHits.length) ? headerHits[h + 1].lineIdx : allLines.length;
-
-//         const chunk = [];
-//         if (inline) chunk.push(inline); // include inline text after the colon as first content
-
-//         // Collect subsequent lines until next section header OR idea boundary
-//         for (let k = lineIdx + 1; k < nextHeaderLine; k++) {
-//           const L = allLines[k].trim();
-//           if (!L) continue;
-//           if (ideaBoundaryRE.test(L)) break; // stop at next idea
-//           // stop if another section header unexpectedly appears before our computed nextHeaderLine
-//           const isHeader = new RegExp("^\\s*(" + anyLabelGroup + ")\\s*:\\s*(.*)$", "i").test(L);
-//           if (isHeader) break;
-//           chunk.push(L);
-//         }
-//         sectionMap.set(canon, chunk);
-//       }
-//     }
-
-//     // ---- Fallbacks if some sections missing ----
-//     const filteredBody = blk.body.filter(l => !/^Name\s*:/i.test(l)).map(l => l.trim()).filter(Boolean);
-
-//     // 1) General Description: first non-header paragraph
-//     if (!sectionMap.has("General Description") && filteredBody.length) {
-//       const firstPara = [];
-//       for (const L of filteredBody) {
-//         if (new RegExp("^\\s*(" + anyLabelGroup + ")\\s*:", "i").test(L)) break;
-//         firstPara.push(L);
-//         // Stop after a couple of lines for sanity
-//         if (firstPara.length >= 3) break;
-//       }
-//       if (firstPara.length) sectionMap.set("General Description", firstPara);
-//     }
-
-//     // 2) Tech/Budget: lines with $, budget-ish, BOM, stack, parts
-//     if (!sectionMap.has("Required Technologies & Budget Breakdown")) {
-//       const techish = filteredBody.filter(x =>
-//         /\$|\b(budget|cost|costs|bom|bill of materials|stack|tech|parts?)\b/i.test(x)
-//       );
-//       if (techish.length) sectionMap.set("Required Technologies & Budget Breakdown", techish);
-//     }
-
-//     // 3) Timeframe: months/weeks/phase/milestones
-//     if (!sectionMap.has("Timeframe Breakdown")) {
-//       const tf = filteredBody.filter(x => /\b(months?|weeks?|phase|milestones?)\b/i.test(x));
-//       if (tf.length) sectionMap.set("Timeframe Breakdown", tf);
-//     }
-
-//     // 4) Skills/Complexity
-//     if (!sectionMap.has("Complexity & Skills Needed")) {
-//       const sk = filteredBody.filter(x => /\b(skill|skills|experience|complexity|difficulty)\b/i.test(x));
-//       if (sk.length) sectionMap.set("Complexity & Skills Needed", sk);
-//     }
-
-//     // 5) Similar Products
-//     if (!sectionMap.has("Similar Products")) {
-//       const sp = filteredBody.filter(x => /\b(existing|similar|competitor|competition|product|app|tool|platform)\b/i.test(x));
-//       if (sp.length) sectionMap.set("Similar Products", sp);
-//     }
-
-//     // 6) Novel Elements
-//     if (!sectionMap.has("Novel Elements")) {
-//       const nv = filteredBody.filter(x => /\b(novel|differentiator|innovation|unique|new|original|what'?s new)\b/i.test(x));
-//       if (nv.length) sectionMap.set("Novel Elements", nv);
-//     }
-
-//     // Compose HTML sections in canonical order
-//     const sectionsHtml = canonicalOrder.map(label => {
-//       const lines = sectionMap.get(label) || [];
-//       return `
-//         <div class="section-title">${label}<span class="expand-icon">▶</span></div>
-//         <div class="section-content">${toHtml(lines)}</div>
-//       `;
-//     }).join("");
-
-//     return `
-//       <li class="idea-card fade-in">
-//         <h2>${title || `Project Idea ${idx + 1}`}</h2>
-//         ${sectionsHtml}
-//       </li>
-//     `;
-//   }).join("");
-
-//   return `<ol class="idea-list">${itemsHtml}</ol>`;
-// }
-
-
 
 
 
