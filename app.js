@@ -105,7 +105,7 @@ Novel Elements: ...`;
   } catch { setOutput("❌ Network or fetch error."); }
 }
 
-ffunction formatOutput(raw) {
+function formatOutput(raw) {
   // ---------- Normalize & de-noise ----------
   let text = String(raw)
     .replace(/```[\s\S]*?```/g, "")     // strip code fences
