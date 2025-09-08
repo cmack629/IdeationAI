@@ -297,14 +297,6 @@ function formatOutput(raw) {
   return cardsHtml;
 }
 
-const json = safeParseJSON(raw);
-if (json && Array.isArray(json.ideas) && json.ideas.length) {
-  setOutput(renderIdeasJSON(json.ideas.slice(0,3)), true);
-} else {
-  // fallback to heuristic prose parser
-  setOutput(formatOutput(raw), true);
-}
-
 
 // ==== Attach Expand Events ====
 function attachExpandEvents(){
