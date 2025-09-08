@@ -1,4 +1,3 @@
-
 // ==== Element handles ====
 const promptInput   = document.getElementById("prompt");
 const generateBtn   = document.getElementById("generate");
@@ -57,8 +56,6 @@ Demo Considerations: ${demo}
 
 Return ONLY the following sections for each idea, with no introduction, no conclusion, and no extra text.
 
-Output exactly 3 ideas.
-
 Format exactly like this:
 
 Project Idea 1:
@@ -71,22 +68,7 @@ Similar Products: ...
 Novel Elements: ...
 
 Project Idea 2:
-Name: ...
-General Description: ...
-Required Technologies & Budget Breakdown: ...
-Timeframe Breakdown: ...
-Complexity & Skills Needed: ...
-Similar Products: ...
-Novel Elements: ...
-
-Project Idea 3:
-Name: ...
-General Description: ...
-Required Technologies & Budget Breakdown: ...
-Timeframe Breakdown: ...
-Complexity & Skills Needed: ...
-Similar Products: ...
-Novel Elements: ...`;
+...`;
 
   setOutput("⏳ Generating ideas...");
 
@@ -106,157 +88,57 @@ Novel Elements: ...`;
   } catch { setOutput("❌ Network or fetch error."); }
 }
 
-function formatOutput(raw) {
-  // ---------- Normalize & de-noise ----------
-  let text = String(raw)
-    .replace(/```[\s\S]*?```/g, "")     // strip code fences if any
-    .replace(/<\/?[^>]+>/gi, "")        // strip any HTML tags
-    .replace(/\r/g, "")
-    .replace(/\*\*/g, "")
-    .replace(/\*/g, "")
-    .replace(/\|/g, " ")
-    .replace(/---+/g, "")
-    .trim();
-
-  // --- Force idea markers to line starts (handles mid-line headings) ---
-  // Put newlines around headings like "Project Idea 3:" / "Idea 2 -" / "2)"/"2."
-  text = text
-    .replace(/(?:\s*)(?=((?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?))/gi, "\n") // newline before heading (lookahead)
-    .replace(/((?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?)/gi, "\n$1\n")        // heading isolated by newlines
-    .replace(/(?:\s*)(?=(?:\bName\s*:))/gi, "\n")                              // newline before "Name:"
-    .replace(/\bName\s*:/gi, "\nName:\n");                                     // put "Name:" on its own line
-
-  // ---------- Define tolerant markers ----------
-  const ideaHeadRE = /^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?|\d+\s*[.)]\s+/i;
-  const nameHeadRE = /^\s*Name\s*:/i;
-
-  // ---------- Drop preamble (anything before first idea heading OR Name:) ----------
-  let lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-  let firstIdx = lines.findIndex(l => ideaHeadRE.test(l) || nameHeadRE.test(l));
-  if (firstIdx > 0) {
-    lines = lines.slice(firstIdx);
-  }
-
-  // ---------- Group into idea blocks on heading OR Name: ----------
-  let blocks = [];
-  let cur = null;
-
-  for (const line of lines) {
-    if (ideaHeadRE.test(line) || nameHeadRE.test(line)) {
-      if (cur) blocks.push(cur);
-      cur = { heading: ideaHeadRE.test(line) ? line : "Name:", body: [] };
-      if (nameHeadRE.test(line)) cur.body.push(line); // keep "Name:" line in body for extraction
-    } else if (cur) {
-      cur.body.push(line);
-    }
-  }
-  if (cur) blocks.push(cur);
-
-  // ---------- Rescue split: if fewer than 3, split extra Name: inside blocks ----------
-  if (blocks.length < 3) {
-    const rescued = [];
-    for (const b of blocks) {
-      // If this block contains multiple Name: entries, split them into separate ideas
-      const idxs = b.body
-        .map((l, i) => ({ l, i }))
-        .filter(x => /^Name\s*:/i.test(x.l))
-        .map(x => x.i);
-
-      if (idxs.length > 1) {
-        for (let k = 0; k < idxs.length; k++) {
-          const start = idxs[k];
-          const end = (k + 1 < idxs.length) ? idxs[k + 1] : b.body.length;
-          const slice = b.body.slice(start, end);
-          rescued.push({ heading: "Name:", body: slice });
-        }
-      } else {
-        rescued.push(b);
-      }
-    }
-    blocks = rescued;
-  }
-
-  // If still nothing, treat whole text as one idea
-  if (blocks.length === 0 && lines.length) {
-    blocks.push({ heading: "Project Idea 1:", body: lines });
-  }
-
-  // Keep up to 3 *after* rescue
-  const kept = blocks.slice(0, 3);
-
-  // ---------- Sections ----------
-  const sections = [
-    "General Description",
-    "Required Technologies & Budget Breakdown",
-    "Timeframe Breakdown",
-    "Complexity & Skills Needed",
-    "Similar Products",
-    "Novel Elements"
-  ];
-  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-  const sectionStopLA =
-    "(?=\\n\\s*(?:" +
-    sections.map(esc).join("|") +
-    ")\\s*:?\\s*|\\n\\s*(?:(?:Project\\s*Idea|Idea)\\s*\\d+\\s*[:\\-.)]?|\\d+\\s*[\\.)]\\s+|Name\\s*:)\\s*|$)";
-
-  // ---------- Render ----------
-  const itemsHtml = kept.map((blk, idx) => {
-    const ideaText = [blk.heading, ...blk.body].join("\n").trim();
-
-    // Title: explicit Name: first
-    let name = "";
-    const nameLine = blk.body.find(l => /^Name\s*:/i.test(l));
-    if (nameLine) {
-      name = nameLine.replace(/^Name\s*:\s*/i, "").trim();
-    }
-    if (!name) {
-      name = blk.heading
-        .replace(/^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?\s*/i, "")
-        .replace(/^\d+\s*[.)]\s+/, "")
-        .trim();
-
-      if (!name) {
-        const generic = /^(here (are|is)|some (good|great)|below (are|is))/i;
-        name = (blk.body.find(l => !/^Name\s*:/i.test(l) && !generic.test(l)) || "Project Idea")
-          .split(/[.:;-]/)[0]
-          .slice(0, 120)
-          .trim();
-      }
-    }
-
-    const extractSection = (label) => {
-      const re = new RegExp(
-        "^\\s*" + esc(label) + "\\s*:?\\s*([\\s\\S]*?)" + sectionStopLA,
-        "im"
-      );
-      const m = ideaText.match(re);
-      let content = (m && m[1] ? m[1].trim() : "");
-      const ls = content.split("\n").map(x => x.trim()).filter(Boolean);
-      if (!ls.length) return "<p>N/A</p>";
-      if (ls.some(x => /^[-•\d]+[.)]?\s+/.test(x))) {
-        return "<ul>" + ls.map(x => `<li>${x.replace(/^[-•\d. )]+\s*/, "")}</li>`).join("") + "</ul>";
-      }
-      return ls.map(x => `<p>${x}</p>`).join("");
-    };
-
-    const sectionsHtml = sections.map(label => `
-      <div class="section-title">${label}<span class="expand-icon">▶</span></div>
-      <div class="section-content">${extractSection(label)}</div>
-    `).join("");
-
-    return `
-      <li class="idea-card fade-in">
-        <h2>${name || `Project Idea ${idx + 1}`}</h2>
-        ${sectionsHtml}
-      </li>
-    `;
-  }).join("");
-
-  return `<ol class="idea-list">${itemsHtml}</ol>`;
+// ==== Format Output ====
+function formatOutput(text) {
+  // Cut away any intro before the first "Project Idea"
+const firstIdeaIdx = text.search(/Project\s*Idea\s*1/i);
+if (firstIdeaIdx > -1) {
+  text = text.slice(firstIdeaIdx);
 }
 
+  
 
+  let ideaMatches = text.split(/Project\s*Idea\s*\d+[:\-]?\s*/i).filter(s=>s.trim());
+  if(ideaMatches.length<3 && text.trim()){ ideaMatches = [text.trim(), ...ideaMatches]; }
+  ideaMatches = ideaMatches.slice(0,3);
+
+  return ideaMatches.map(idea => {
+    let lines = idea.split("\n").map(l=>l.trim()).filter(Boolean);
+    let nameLine = lines.find(l=>/^Name\s*:/.test(l)) || lines[0];
+    let nameMatch = nameLine.match(/Name\s*:\s*(.*)/i);
+    let name = nameMatch ? nameMatch[1].trim() : nameLine.trim();
+
+    const sections = [
+      "General Description",
+      "Required Technologies & Budget Breakdown",
+      "Timeframe Breakdown",
+      "Complexity & Skills Needed",
+      "Similar Products",
+      "Novel Elements"
+    ];
+
+    let contentHtml = sections.map(sec=>{
+      let regex = new RegExp(sec + "\\s*:?\\s*([\\s\\S]*?)($|" + sections.join("|") + ")", "i");
+      let match = idea.match(regex);
+      let content = match ? match[1].trim() : "N/A";
+
+      let lines = content.split("\n").map(l=>l.trim()).filter(Boolean);
+      if(lines.some(l=>/^[-•]/.test(l))){
+        content = "<ul>" + lines.map(l=>`<li>${l.replace(/^[-•]\s*/,"")}</li>`).join("") + "</ul>";
+      } else {
+        content = lines.map(l=>`<p>${l}</p>`).join("");
+      }
+
+      return `<div class="section-title">${sec}<span class="expand-icon">▶</span></div>
+              <div class="section-content">${content}</div>`;
+    }).join("");
+
+    return `<div class="idea-card fade-in">
+              <h2>${name}</h2>
+              ${contentHtml}
+            </div>`;
+  }).join("");
+}
 
 // ==== Attach Expand Events ====
 function attachExpandEvents(){
