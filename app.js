@@ -43,25 +43,21 @@ async function generateIdeas() {
   const innovation = innovationSelect.value;
   const demo = demoSelect.value;
 
-  let enhancedPrompt = `
-User idea/constraints: ${prompt}
-Budget range: $${budgetMin} – $${budgetMax}
-Timeframe: ${timeMin} – ${timeMax} months
-Preferred technologies: ${selectedTechs.join(", ") || "N/A"}
-Industry focus: ${selectedIndustries.join(", ") || "N/A"}
-Project Complexity: ${complexity}
-Innovation Level: ${innovation}
-Demo Considerations: ${demo}
+let enhancedPrompt = `
+You are responding for machine parsing. Output ONLY sections in this exact schema. 
+Start with "Project Idea 1:" etc. Do NOT include any introduction or conclusion text.
 
-Generate up to 3 computer engineering project ideas. For each, provide:
-- Name
-- General Description
-- Required Technologies & Budget Breakdown
-- Timeframe Breakdown
-- Complexity & Skills Needed
-- Similar Products
-- Novel Elements
-`;
+Project Idea 1:
+Name: ...
+General Description:
+Required Technologies & Budget Breakdown:
+Timeframe Breakdown:
+Complexity & Skills Needed:
+Similar Products:
+Novel Elements:
+
+${enhancedPrompt}
+`.trim();
 
   setOutput("⏳ Generating ideas...");
 
