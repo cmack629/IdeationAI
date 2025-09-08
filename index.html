@@ -12,50 +12,82 @@
   <div class="container">
     <h1>Computer Engineering Project Ideator</h1>
 
-    <label for="prompt">Enter your project idea or constraints:</label>
-    <textarea id="prompt" placeholder="e.g., Embedded systems with sensors and low power usage..."></textarea>
+    <div class="columns">
+      <!-- Left column: Parameters -->
+      <div class="column column-left">
+        <label for="api-key">API Key:</label>
+        <input type="text" id="api-key" placeholder="Enter your Google API Key">
 
-    <label>Budget Range (USD):</label>
-    <div id="budget-slider"></div>
-    <div id="budget-display">Range: $100 – $1000</div>
+        <label for="prompt">Project Idea / Constraints:</label>
+        <textarea id="prompt" placeholder="Describe your ideas, constraints, and/or interests..." rows="5"></textarea>
 
-    <label>Relevant Technologies:</label>
-    <div id="technologies" class="checkbox-group">
-      <label><input type="checkbox" value="Embedded Systems"> Embedded Systems</label>
-      <label><input type="checkbox" value="IoT"> IoT</label>
-      <label><input type="checkbox" value="AI/ML"> AI/ML</label>
-      <label><input type="checkbox" value="Robotics"> Robotics</label>
-      <label><input type="checkbox" value="Networking"> Networking</label>
-      <label><input type="checkbox" value="FPGA"> FPGA</label>
-      <label><input type="checkbox" value="Cloud"> Cloud</label>
-      <label><input type="checkbox" value="Smart Device"> Smart Device</label>
-      <label><input type="checkbox" value="Cybersecurity"> Cybersecurity</label>
-      <label><input type="checkbox" value="RF"> RF</label>
-      <label><input type="checkbox" value="Biomedical"> Biomedical</label>
-      <label><input type="checkbox" value="AR/VR"> AR/VR</label>
-      <label><input type="checkbox" value="Software Application"> Software Application</label>
+        <label>Budget Range (USD):</label>
+        <div id="budget-slider"></div>
+        <div id="budget-display">Range: $100 – $1000</div>
+
+        <label>Timeframe (months):</label>
+        <div id="timeframe-slider"></div>
+        <div id="timeframe-display">6 – 12 months</div>
+
+        <label>Relevant Technologies:</label>
+        <div id="technologies" class="checkbox-group">
+          <label><input type="checkbox" value="Embedded Systems"> Embedded Systems</label>
+          <label><input type="checkbox" value="IoT"> IoT</label>
+          <label><input type="checkbox" value="AI/ML"> AI/ML</label>
+          <label><input type="checkbox" value="Robotics"> Robotics</label>
+          <label><input type="checkbox" value="Networking"> Networking</label>
+          <label><input type="checkbox" value="FPGA"> FPGA</label>
+          <label><input type="checkbox" value="Cloud"> Cloud</label>
+          <label><input type="checkbox" value="Smart Device"> Smart Device</label>
+          <label><input type="checkbox" value="Cybersecurity"> Cybersecurity</label>
+          <label><input type="checkbox" value="RF"> RF</label>
+          <label><input type="checkbox" value="Biomedical"> Biomedical</label>
+          <label><input type="checkbox" value="AR/VR"> AR/VR</label>
+          <label><input type="checkbox" value="Software Application"> Software Application</label>
+        </div>
+
+        <label>Industry Focus:</label>
+        <div id="industries" class="checkbox-group">
+          <label><input type="checkbox" value="Defense"> Defense</label>
+          <label><input type="checkbox" value="Automotive"> Automotive</label>
+          <label><input type="checkbox" value="Aerospace"> Aerospace</label>
+          <label><input type="checkbox" value="Healthcare"> Healthcare</label>
+          <label><input type="checkbox" value="Energy"> Energy</label>
+          <label><input type="checkbox" value="Industrial"> Industrial</label>
+          <label><input type="checkbox" value="Consumer"> Consumer</label>
+        </div>
+
+        <label>Project Complexity:</label>
+        <div id="complexity" class="radio-group">
+          <label><input type="radio" name="complexity" value="Low"> Low</label>
+          <label><input type="radio" name="complexity" value="Medium" checked> Medium</label>
+          <label><input type="radio" name="complexity" value="High"> High</label>
+        </div>
+
+        <label>Innovation Level:</label>
+        <select id="innovation">
+          <option value="College Student Level">College Student Level</option>
+          <option value="Engineering Level">Engineering Level</option>
+          <option value="Corporate Technology Level">Huge Technology Corporate Level</option>
+        </select>
+
+        <label>Demo Considerations:</label>
+        <select id="demo">
+          <option value="Small Tabletop Demo">Small Tabletop Demo</option>
+          <option value="Medium Room Demo">Medium Room Demo</option>
+          <option value="Large Open Space Demo">Large Open Space Demo</option>
+        </select>
+
+        <button id="generate" class="primary-btn">Generate Ideas</button>
+      </div>
+
+      <!-- Right column: Results -->
+      <div class="column column-right">
+        <h2>Results</h2>
+        <p>The generated project ideas will appear here:</p>
+        <div id="output" class="output-box"></div>
+      </div>
     </div>
-
-    <label>Industry Focus:</label>
-    <div id="industries" class="checkbox-group">
-      <label><input type="checkbox" value="Defense"> Defense</label>
-      <label><input type="checkbox" value="Automotive"> Automotive</label>
-      <label><input type="checkbox" value="Aerospace"> Aerospace</label>
-      <label><input type="checkbox" value="Healthcare"> Healthcare</label>
-      <label><input type="checkbox" value="Energy"> Energy</label>
-      <label><input type="checkbox" value="Industrial"> Industrial</label>
-      <label><input type="checkbox" value="Consumer"> Consumer</label>
-    </div>
-
-    <button id="generate" class="primary-btn">Generate Ideas</button>
-
-    <div id="extra-buttons" class="extra-buttons hidden">
-      <button id="expand">Expand Details</button>
-      <button id="similar">Similar Ideas</button>
-      <button id="summarize">Summarize</button>
-    </div>
-
-    <div id="output" class="output-box"></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
