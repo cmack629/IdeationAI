@@ -37,61 +37,61 @@ async function generateIdeas() {
 
   const [budgetMin, budgetMax] = getBudgetRange();
   const [timeMin, timeMax] = getTimeframeRange();
-  const selectedTechs      = getSelected(techGroup);
-  const selectedIndustries = getSelected(industryGroup);
-  const complexity         = document.querySelector('input[name="complexity"]:checked')?.value || "Medium";
-  const innovation         = innovationSelect.value;
-  const demo               = demoSelect.value;
+  const techs = getSelected(techGroup);
+  const inds  = getSelected(industryGroup);
+  const complexity = document.querySelector('input[name="complexity"]:checked')?.value || "Medium";
+  const innovation = innovationSelect.value;
+  const demo = demoSelect.value;
 
-  const userConstraints = `
+  const constraints = `
+Generate EXACTLY 3 computer engineering project ideas that satisfy:
+
 User idea/constraints: ${prompt}
 Budget range: $${budgetMin} – $${budgetMax}
 Timeframe: ${timeMin} – ${timeMax} months
-Preferred technologies: ${selectedTechs.join(", ") || "N/A"}
-Industry focus: ${selectedIndustries.join(", ") || "N/A"}
+Preferred technologies: ${techs.join(", ") || "N/A"}
+Industry focus: ${inds.join(", ") || "N/A"}
 Project Complexity: ${complexity}
 Innovation Level: ${innovation}
 Demo Considerations: ${demo}
 `.trim();
 
-  // JSON Schema the model must follow
+  // REST requires UPPER-CASE schema types
   const responseSchema = {
-    type: "object",
+    type: "OBJECT",
     properties: {
       ideas: {
-        type: "array",
-        minItems: 3,
-        maxItems: 3,
+        type: "ARRAY",
         items: {
-          type: "object",
+          type: "OBJECT",
           properties: {
-            name: { type: "string" },
-            generalDescription: { type: "string" },
+            name: { type: "STRING" },
+            generalDescription: { type: "STRING" },
             requiredTechBudget: {
-              type: "array",
+              type: "ARRAY",
               items: {
-                type: "object",
+                type: "OBJECT",
                 properties: {
-                  item: { type: "string" },
-                  cost: { type: "number" }
+                  item: { type: "STRING" },
+                  cost: { type: "NUMBER" } // optional; we won't require it
                 },
                 required: ["item"]
               }
             },
             timeframeBreakdown: {
-              type: "array",
+              type: "ARRAY",
               items: {
-                type: "object",
+                type: "OBJECT",
                 properties: {
-                  phase: { type: "string" },
-                  months: { type: "number" }
+                  phase: { type: "STRING" },
+                  months: { type: "NUMBER" }
                 },
                 required: ["phase", "months"]
               }
             },
-            complexitySkillsNeeded: { type: "array", items: { type: "string" } },
-            similarProducts:       { type: "array", items: { type: "string" } },
-            novelElements:         { type: "array", items: { type: "string" } }
+            complexitySkillsNeeded: { type: "ARRAY", items: { type: "STRING" } },
+            similarProducts:       { type: "ARRAY", items: { type: "STRING" } },
+            novelElements:         { type: "ARRAY", items: { type: "STRING" } }
           },
           required: [
             "name",
@@ -108,11 +108,9 @@ Demo Considerations: ${demo}
     required: ["ideas"]
   };
 
-  const systemPrompt = `
-Return ONLY valid JSON that matches the provided schema. 
-Do not include any explanatory text, headings, or Markdown—JSON only.
-
-Generate EXACTLY 3 ideas that satisfy the constraints below.
+  const systemInstruction = `
+Return ONLY valid JSON that matches the provided schema.
+No markdown, no headings, no extra text — JSON only.
 `.trim();
 
   setOutput("⏳ Generating ideas...");
@@ -122,33 +120,32 @@ Generate EXACTLY 3 ideas that satisfy the constraints below.
       `https://generativelanguage.googleapis.com/v1beta/${DEFAULT_MODEL}:generateContent`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `${systemPrompt}\n\n${userConstraints}` }] }],
+          contents: [{ parts: [{ text: `${systemInstruction}\n\n${constraints}` }] }],
           generationConfig: {
-            temperature: 0.7,
-            // IMPORTANT: camelCase keys for Gemini REST API
-            responseMimeType: "application/json",
-            responseSchema
+            responseMimeType: "application/json",   // <-- camelCase
+            responseSchema: responseSchema          // <-- camelCase + UPPER-CASE types
           }
         })
       }
     );
 
     const data = await res.json();
-    if (data.error) {
-      setOutput(`❌ API Error: ${data.error.message}`);
-      return;
-    }
+    if (data.error) { setOutput(`❌ API Error: ${data.error.message}`); return; }
 
-    // Join all parts; some SDKs split JSON across parts
     const raw = (data?.candidates?.[0]?.content?.parts || [])
       .map(p => p.text ?? "")
       .join("")
       .trim();
 
-    const json = parseModelJSON(raw);
-    if (!json || !Array.isArray(json.ideas)) {
+    console.log("Gemini raw JSON:", raw); // <-- helpful for debugging
+
+    const parsed = parseModelJSON(raw);
+    if (!parsed || !Array.isArray(parsed.ideas)) {
       setOutput(
         `⚠️ Could not parse JSON. Raw response:<br><pre>${escapeHTML(raw)}</pre>`,
         true
@@ -156,25 +153,22 @@ Generate EXACTLY 3 ideas that satisfy the constraints below.
       return;
     }
 
-    setOutput(renderIdeasJSON(json.ideas.slice(0, 3)), true);
+    setOutput(renderIdeasJSON(parsed.ideas.slice(0, 3)), true);
     attachExpandEvents();
   } catch (e) {
+    console.error(e);
     setOutput("❌ Network or fetch error.");
   }
 }
+
 function parseModelJSON(s) {
-  // Trim to the outermost JSON object if the model sneaks whitespace or notes
   const start = s.indexOf("{");
-  const end   = s.lastIndexOf("}");
+  const end = s.lastIndexOf("}");
   if (start === -1 || end === -1 || end <= start) return null;
   try {
     const obj = JSON.parse(s.slice(start, end + 1));
-    // Some models may stringify the payload again inside; unbox if needed
-    if (typeof obj === "string") return JSON.parse(obj);
-    return obj;
-  } catch {
-    return null;
-  }
+    return typeof obj === "string" ? JSON.parse(obj) : obj;
+  } catch { return null; }
 }
 
 function escapeHTML(str) {
