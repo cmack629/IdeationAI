@@ -89,50 +89,58 @@ Project Idea 2:
 }
 
 function formatOutput(raw) {
-  // ---------- Cleanup ----------
+  // ---------- Normalize & de-noise ----------
   let text = String(raw)
+    .replace(/```[\s\S]*?```/g, "")             // strip code fences if any
+    .replace(/<\/?[^>]+>/gi, "")                // strip any HTML tags
     .replace(/\r/g, "")
     .replace(/\*\*/g, "")
     .replace(/\*/g, "")
     .replace(/\|/g, " ")
     .replace(/---+/g, "")
-    .replace(/<\/?[^>]+>/gi, "")
     .trim();
 
-  // ---------- Find first idea; drop preamble (#3 style) ----------
-  // Accept headings like: "Project Idea 1:", "Idea 1 -", "1) ...", "1. ..."
-  const ideaHeadStartRE = /(?:^|\n)\s*(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?|(?:^|\n)\s*\d+\s*[.)]\s+/i;
-  const firstIdx = text.search(ideaHeadStartRE);
-  if (firstIdx > -1) {
-    text = text.slice(firstIdx);
+  // ---------- Define tolerant markers ----------
+  // Idea headings we accept
+  const ideaHeadRE = /^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?|\d+\s*[.)]\s+/i;
+  // Also treat "Name:" as a hard idea boundary
+  const nameHeadRE = /^\s*Name\s*:/i;
+
+  // ---------- Drop preamble (anything before first idea heading OR Name:) ----------
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  let firstIdx = lines.findIndex(l => ideaHeadRE.test(l) || nameHeadRE.test(l));
+  if (firstIdx > 0) {
+    text = lines.slice(firstIdx).join("\n");
   }
 
-  // ---------- Tokenize ideas (line-by-line scan) ----------
-  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-  const ideaHeadRE = /^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?|\d+\s*[.)]\s+/i;
+  // ---------- Re-scan lines after trimming ----------
+  const L = text.split("\n").map(l => l.trim()).filter(Boolean);
 
-  const ideas = [];
+  // Group lines into idea blocks: start a new block on ideaHeadRE OR nameHeadRE
+  const blocks = [];
   let cur = null;
 
-  for (const line of lines) {
-    if (ideaHeadRE.test(line)) {
-      if (cur) ideas.push(cur);
-      cur = { heading: line, body: [] };
+  for (const line of L) {
+    if (ideaHeadRE.test(line) || nameHeadRE.test(line)) {
+      if (cur) blocks.push(cur);
+      cur = { heading: ideaHeadRE.test(line) ? line : "Name:", body: [] };
+      // if this line is "Name: ...", keep it inside body so we can read the value
+      if (nameHeadRE.test(line)) cur.body.push(line);
     } else if (cur) {
       cur.body.push(line);
     }
   }
-  if (cur) ideas.push(cur);
+  if (cur) blocks.push(cur);
 
-  // If none detected, treat whole text as one idea
-  if (ideas.length === 0 && text) {
-    ideas.push({ heading: "Project Idea 1:", body: lines });
+  // If we still didn't detect anything, treat whole text as one idea
+  if (blocks.length === 0 && text) {
+    blocks.push({ heading: "Project Idea 1:", body: L });
   }
 
-  // Keep up to 3 ideas
-  const kept = ideas.slice(0, 3);
+  // Keep at most 3 ideas
+  const kept = blocks.slice(0, 3);
 
-  // ---------- Sections to extract uniformly ----------
+  // ---------- Section labels (escaped for regex) ----------
   const sections = [
     "General Description",
     "Required Technologies & Budget Breakdown",
@@ -141,27 +149,26 @@ function formatOutput(raw) {
     "Similar Products",
     "Novel Elements"
   ];
-
-  // Escaper for building regexes safely
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  // Lookahead that stops a section at the next section OR next idea OR end
+  // Build stop lookahead: next section OR next idea heading OR next Name: OR end
   const sectionStopLA =
     "(?=\\n\\s*(?:" +
     sections.map(esc).join("|") +
-    ")\\s*:?\\s*|\\n\\s*(?:(?:Project\\s*Idea|Idea)\\s*\\d+\\s*[:\\-.)]?|\\d+\\s*[\\.)]\\s+)|$)";
+    ")\\s*:?\\s*|\\n\\s*(?:(?:Project\\s*Idea|Idea)\\s*\\d+\\s*[:\\-.)]?|\\d+\\s*[\\.)]\\s+|Name\\s*:)\\s*|$)";
 
-  // ---------- Render uniform HTML list ----------
-  const ideaItems = kept.map((blk, idx) => {
-    const ideaText = [blk.heading, ...blk.body].join("\n");
+  // ---------- Render each idea ----------
+  const itemsHtml = kept.map((blk, idx) => {
+    const ideaText = [blk.heading, ...blk.body].join("\n").trim();
 
-    // Title: prefer explicit "Name:" line, else derive from heading/body
+    // Title: prefer explicit Name: line, else derive from heading/body
     let name = "";
     const nameLine = blk.body.find(l => /^Name\s*:/i.test(l));
     if (nameLine) {
       name = nameLine.replace(/^Name\s*:\s*/i, "").trim();
-    } else {
-      // derive from heading sans numbering, or first non-generic body line
+    }
+    if (!name) {
+      // derive from heading numberless, else first meaningful line
       name = blk.heading
         .replace(/^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?\s*/i, "")
         .replace(/^\d+\s*[.)]\s+/, "")
@@ -175,41 +182,36 @@ function formatOutput(raw) {
       }
     }
 
-    // Extract each section safely
-    const contentBlocks = sections.map(sec => {
-      const secRE = new RegExp(
-        "^\\s*" + esc(sec) + "\\s*:?\\s*([\\s\\S]*?)" + sectionStopLA,
+    // Helper to extract a section with strict stop conditions
+    const extractSection = (label) => {
+      const re = new RegExp(
+        "^\\s*" + esc(label) + "\\s*:?\\s*([\\s\\S]*?)" + sectionStopLA,
         "im"
       );
-      const m = ideaText.match(secRE);
+      const m = ideaText.match(re);
       let content = (m && m[1] ? m[1].trim() : "");
-
-      // Normalize to either bullet list or paragraphs
-      let ls = content.split("\n").map(s => s.trim()).filter(Boolean);
-      if (!ls.length) {
-        content = "<p>N/A</p>";
-      } else if (ls.some(l => /^[-•\d]+[.)]?\s+/.test(l))) {
-        content = "<ul>" + ls.map(l => `<li>${l.replace(/^[-•\d. )]+\s*/, "")}</li>`).join("") + "</ul>";
-      } else {
-        content = ls.map(l => `<p>${l}</p>`).join("");
+      const ls = content.split("\n").map(x => x.trim()).filter(Boolean);
+      if (!ls.length) return "<p>N/A</p>";
+      if (ls.some(x => /^[-•\d]+[.)]?\s+/.test(x))) {
+        return "<ul>" + ls.map(x => `<li>${x.replace(/^[-•\d. )]+\s*/, "")}</li>`).join("") + "</ul>";
       }
+      return ls.map(x => `<p>${x}</p>`).join("");
+    };
 
-      return `
-        <div class="section-title">${sec}<span class="expand-icon">▶</span></div>
-        <div class="section-content">${content}</div>
-      `;
-    }).join("");
+    const sectionsHtml = sections.map(label => `
+      <div class="section-title">${label}<span class="expand-icon">▶</span></div>
+      <div class="section-content">${extractSection(label)}</div>
+    `).join("");
 
     return `
       <li class="idea-card fade-in">
         <h2>${name || `Project Idea ${idx + 1}`}</h2>
-        ${contentBlocks}
+        ${sectionsHtml}
       </li>
     `;
   }).join("");
 
-  // Wrap as an ordered list so ideas are clearly “listed as such”
-  return `<ol class="idea-list">${ideaItems}</ol>`;
+  return `<ol class="idea-list">${itemsHtml}</ol>`;
 }
 
 
