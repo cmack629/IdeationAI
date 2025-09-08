@@ -53,6 +53,7 @@ Project Complexity: ${complexity}
 Innovation Level: ${innovation}
 Demo Considerations: ${demo}
 
+Do not say "Here are some ideas based on..." Just give the required information for each project idea.
 Generate up to 3 computer engineering project ideas. For each, provide:
 - Name
 - General Description
