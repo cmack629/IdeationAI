@@ -29,6 +29,7 @@ function setOutput(msg, asHTML=false){ outputDiv.innerHTML=asHTML?msg:`<p>${msg}
 function getSelected(group){ const checked=group.querySelectorAll("input[type=checkbox]:checked")||[]; return Array.from(checked).map(cb=>cb.value); }
 
 // ==== Generate Ideas ====
+// ==== Generate Ideas ====
 async function generateIdeas() {
   const prompt = promptInput.value.trim();
   const apiKey = apiKeyInput.value.trim();
@@ -43,43 +44,145 @@ async function generateIdeas() {
   const innovation = innovationSelect.value;
   const demo = demoSelect.value;
 
-let enhancedPrompt = `
-You are responding for machine parsing. Output ONLY sections in this exact schema. 
-Start with "Project Idea 1:" etc. Do NOT include any introduction or conclusion text.
+  // STRICT JSON PROMPT — no intro/outro text allowed
+  const structuredPrompt = `
+Return ONLY a single JSON object with this exact schema. Do NOT include any preamble or explanation.
 
-Project Idea 1:
-Name: ...
-General Description:
-Required Technologies & Budget Breakdown:
-Timeframe Breakdown:
-Complexity & Skills Needed:
-Similar Products:
-Novel Elements:
+{
+  "ideas": [
+    {
+      "name": "string",
+      "generalDescription": "string",
+      "requiredTechBudget": [{"item":"string","cost":number}],
+      "timeframeBreakdown": [{"phase":"string","months":number}],
+      "complexitySkillsNeeded": ["string"],
+      "similarProducts": ["string"],
+      "novelElements": ["string"]
+    }
+  ]
+}
 
-Project Idea 2:
-...
+Fill with up to 3 ideas that satisfy the following constraints:
 
-
-${enhancedPrompt}
+User idea/constraints: ${prompt}
+Budget range: $${budgetMin} – $${budgetMax}
+Timeframe: ${timeMin} – ${timeMax} months
+Preferred technologies: ${selectedTechs.join(", ") || "N/A"}
+Industry focus: ${selectedIndustries.join(", ") || "N/A"}
+Project Complexity: ${complexity}
+Innovation Level: ${innovation}
+Demo Considerations: ${demo}
 `.trim();
 
   setOutput("⏳ Generating ideas...");
 
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/${DEFAULT_MODEL}:generateContent`,{
-      method:"POST",
-      headers:{"Content-Type":"application/json","x-goog-api-key":apiKey},
-      body: JSON.stringify({contents:[{parts:[{text:enhancedPrompt}]}],generationConfig:{temperature:0.7}})
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/${DEFAULT_MODEL}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: structuredPrompt }] }],
+        generationConfig: {
+          temperature: 0.7,
+          // 👇 Forces the model to return JSON text only
+          response_mime_type: "application/json"
+        }
+      })
     });
     const data = await res.json();
-    if(data.error){ setOutput(`❌ API Error: ${data.error.message}`); return; }
-    const text = data?.candidates?.[0]?.content?.parts?.map(p=>p.text||"").join("").trim();
-    if(!text){ setOutput("⚠️ No response from Gemini."); return; }
+    if (data.error) { setOutput(`❌ API Error: ${data.error.message}`); return; }
+    const raw = (data?.candidates?.[0]?.content?.parts || [])
+      .map(p => p.text || "")
+      .join("")
+      .trim();
 
-    setOutput(formatOutput(text), true);
+    const json = safeParseJSON(raw);
+    if (!json || !Array.isArray(json.ideas) || json.ideas.length === 0) {
+      // Fallback: show raw text if JSON parsing failed (for debugging)
+      setOutput("⚠️ Could not parse JSON. Showing raw response:<br><pre>" + escapeHTML(raw) + "</pre>", true);
+      return;
+    }
+
+    setOutput(renderIdeasJSON(json.ideas.slice(0,3)), true);
     attachExpandEvents();
-  } catch { setOutput("❌ Network or fetch error."); }
+  } catch {
+    setOutput("❌ Network or fetch error.");
+  }
 }
+function safeParseJSON(s) {
+  // Trim to outermost braces if model adds anything extra
+  const start = s.indexOf("{");
+  const end = s.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+  try { return JSON.parse(s.slice(start, end + 1)); }
+  catch { return null; }
+}
+
+function escapeHTML(str) {
+  return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function currency(n) {
+  if (typeof n !== "number" || Number.isNaN(n)) return "";
+  return "$" + n.toLocaleString();
+}
+
+function renderIdeasJSON(ideas) {
+  return ideas.map(idea => {
+    const name = escapeHTML(idea.name || "Project Idea");
+    // Sections
+    const genDesc = idea.generalDescription ? `<p>${escapeHTML(idea.generalDescription)}</p>` : "<p>N/A</p>";
+
+    const techBudget = Array.isArray(idea.requiredTechBudget) && idea.requiredTechBudget.length
+      ? `<ul>` + idea.requiredTechBudget.map(tb =>
+          `<li>${escapeHTML(tb.item || "Item")}${tb.cost!=null?` — ${currency(tb.cost)}`:""}</li>`
+        ).join("") + `</ul>`
+      : "<p>N/A</p>";
+
+    const timeframe = Array.isArray(idea.timeframeBreakdown) && idea.timeframeBreakdown.length
+      ? `<ul>` + idea.timeframeBreakdown.map(t =>
+          `<li>${escapeHTML(t.phase || "Phase")}${t.months!=null?` — ${t.months} mo`:""}</li>`
+        ).join("") + `</ul>`
+      : "<p>N/A</p>";
+
+    const skills = Array.isArray(idea.complexitySkillsNeeded) && idea.complexitySkillsNeeded.length
+      ? `<ul>` + idea.complexitySkillsNeeded.map(s => `<li>${escapeHTML(s)}</li>`).join("") + `</ul>`
+      : "<p>N/A</p>";
+
+    const similar = Array.isArray(idea.similarProducts) && idea.similarProducts.length
+      ? `<ul>` + idea.similarProducts.map(s => `<li>${escapeHTML(s)}</li>`).join("") + `</ul>`
+      : "<p>N/A</p>";
+
+    const novel = Array.isArray(idea.novelElements) && idea.novelElements.length
+      ? `<ul>` + idea.novelElements.map(s => `<li>${escapeHTML(s)}</li>`).join("") + `</ul>`
+      : "<p>N/A</p>";
+
+    return `
+      <div class="idea-card fade-in">
+        <h2>${name}</h2>
+
+        <div class="section-title">General Description<span class="expand-icon">▶</span></div>
+        <div class="section-content">${genDesc}</div>
+
+        <div class="section-title">Required Technologies & Budget Breakdown<span class="expand-icon">▶</span></div>
+        <div class="section-content">${techBudget}</div>
+
+        <div class="section-title">Timeframe Breakdown<span class="expand-icon">▶</span></div>
+        <div class="section-content">${timeframe}</div>
+
+        <div class="section-title">Complexity & Skills Needed<span class="expand-icon">▶</span></div>
+        <div class="section-content">${skills}</div>
+
+        <div class="section-title">Similar Products<span class="expand-icon">▶</span></div>
+        <div class="section-content">${similar}</div>
+
+        <div class="section-title">Novel Elements<span class="expand-icon">▶</span></div>
+        <div class="section-content">${novel}</div>
+      </div>
+    `;
+  }).join("");
+}
+
 
 // ==== Format Output ====
 function formatOutput(raw) {
@@ -192,6 +295,14 @@ function formatOutput(raw) {
   }).join("");
 
   return cardsHtml;
+}
+
+const json = safeParseJSON(raw);
+if (json && Array.isArray(json.ideas) && json.ideas.length) {
+  setOutput(renderIdeasJSON(json.ideas.slice(0,3)), true);
+} else {
+  // fallback to heuristic prose parser
+  setOutput(formatOutput(raw), true);
 }
 
 
