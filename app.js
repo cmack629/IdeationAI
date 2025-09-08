@@ -108,8 +108,8 @@ Novel Elements: ...`;
 function formatOutput(raw) {
   // ---------- Normalize & de-noise ----------
   let text = String(raw)
-    .replace(/```[\s\S]*?```/g, "")             // strip code fences if any
-    .replace(/<\/?[^>]+>/gi, "")                // strip any HTML tags
+    .replace(/```[\s\S]*?```/g, "")     // strip code fences if any
+    .replace(/<\/?[^>]+>/gi, "")        // strip any HTML tags
     .replace(/\r/g, "")
     .replace(/\*\*/g, "")
     .replace(/\*/g, "")
@@ -117,47 +117,73 @@ function formatOutput(raw) {
     .replace(/---+/g, "")
     .trim();
 
+  // --- Force idea markers to line starts (handles mid-line headings) ---
+  // Put newlines around headings like "Project Idea 3:" / "Idea 2 -" / "2)"/"2."
+  text = text
+    .replace(/(?:\s*)(?=((?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?))/gi, "\n") // newline before heading (lookahead)
+    .replace(/((?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?)/gi, "\n$1\n")        // heading isolated by newlines
+    .replace(/(?:\s*)(?=(?:\bName\s*:))/gi, "\n")                              // newline before "Name:"
+    .replace(/\bName\s*:/gi, "\nName:\n");                                     // put "Name:" on its own line
+
   // ---------- Define tolerant markers ----------
-  // Idea headings we accept
   const ideaHeadRE = /^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?|\d+\s*[.)]\s+/i;
-  // Also treat "Name:" as a hard idea boundary
   const nameHeadRE = /^\s*Name\s*:/i;
 
   // ---------- Drop preamble (anything before first idea heading OR Name:) ----------
-  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  let lines = text.split("\n").map(l => l.trim()).filter(Boolean);
   let firstIdx = lines.findIndex(l => ideaHeadRE.test(l) || nameHeadRE.test(l));
   if (firstIdx > 0) {
-    text = lines.slice(firstIdx).join("\n");
+    lines = lines.slice(firstIdx);
   }
 
-  // ---------- Re-scan lines after trimming ----------
-  const L = text.split("\n").map(l => l.trim()).filter(Boolean);
-
-  // Group lines into idea blocks: start a new block on ideaHeadRE OR nameHeadRE
-  const blocks = [];
+  // ---------- Group into idea blocks on heading OR Name: ----------
+  let blocks = [];
   let cur = null;
 
-  for (const line of L) {
+  for (const line of lines) {
     if (ideaHeadRE.test(line) || nameHeadRE.test(line)) {
       if (cur) blocks.push(cur);
       cur = { heading: ideaHeadRE.test(line) ? line : "Name:", body: [] };
-      // if this line is "Name: ...", keep it inside body so we can read the value
-      if (nameHeadRE.test(line)) cur.body.push(line);
+      if (nameHeadRE.test(line)) cur.body.push(line); // keep "Name:" line in body for extraction
     } else if (cur) {
       cur.body.push(line);
     }
   }
   if (cur) blocks.push(cur);
 
-  // If we still didn't detect anything, treat whole text as one idea
-  if (blocks.length === 0 && text) {
-    blocks.push({ heading: "Project Idea 1:", body: L });
+  // ---------- Rescue split: if fewer than 3, split extra Name: inside blocks ----------
+  if (blocks.length < 3) {
+    const rescued = [];
+    for (const b of blocks) {
+      // If this block contains multiple Name: entries, split them into separate ideas
+      const idxs = b.body
+        .map((l, i) => ({ l, i }))
+        .filter(x => /^Name\s*:/i.test(x.l))
+        .map(x => x.i);
+
+      if (idxs.length > 1) {
+        for (let k = 0; k < idxs.length; k++) {
+          const start = idxs[k];
+          const end = (k + 1 < idxs.length) ? idxs[k + 1] : b.body.length;
+          const slice = b.body.slice(start, end);
+          rescued.push({ heading: "Name:", body: slice });
+        }
+      } else {
+        rescued.push(b);
+      }
+    }
+    blocks = rescued;
   }
 
-  // Keep at most 3 ideas
+  // If still nothing, treat whole text as one idea
+  if (blocks.length === 0 && lines.length) {
+    blocks.push({ heading: "Project Idea 1:", body: lines });
+  }
+
+  // Keep up to 3 *after* rescue
   const kept = blocks.slice(0, 3);
 
-  // ---------- Section labels (escaped for regex) ----------
+  // ---------- Sections ----------
   const sections = [
     "General Description",
     "Required Technologies & Budget Breakdown",
@@ -168,28 +194,27 @@ function formatOutput(raw) {
   ];
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  // Build stop lookahead: next section OR next idea heading OR next Name: OR end
   const sectionStopLA =
     "(?=\\n\\s*(?:" +
     sections.map(esc).join("|") +
     ")\\s*:?\\s*|\\n\\s*(?:(?:Project\\s*Idea|Idea)\\s*\\d+\\s*[:\\-.)]?|\\d+\\s*[\\.)]\\s+|Name\\s*:)\\s*|$)";
 
-  // ---------- Render each idea ----------
+  // ---------- Render ----------
   const itemsHtml = kept.map((blk, idx) => {
     const ideaText = [blk.heading, ...blk.body].join("\n").trim();
 
-    // Title: prefer explicit Name: line, else derive from heading/body
+    // Title: explicit Name: first
     let name = "";
     const nameLine = blk.body.find(l => /^Name\s*:/i.test(l));
     if (nameLine) {
       name = nameLine.replace(/^Name\s*:\s*/i, "").trim();
     }
     if (!name) {
-      // derive from heading numberless, else first meaningful line
       name = blk.heading
         .replace(/^(?:Project\s*Idea|Idea)\s*\d+\s*[:\-.)]?\s*/i, "")
         .replace(/^\d+\s*[.)]\s+/, "")
         .trim();
+
       if (!name) {
         const generic = /^(here (are|is)|some (good|great)|below (are|is))/i;
         name = (blk.body.find(l => !/^Name\s*:/i.test(l) && !generic.test(l)) || "Project Idea")
@@ -199,7 +224,6 @@ function formatOutput(raw) {
       }
     }
 
-    // Helper to extract a section with strict stop conditions
     const extractSection = (label) => {
       const re = new RegExp(
         "^\\s*" + esc(label) + "\\s*:?\\s*([\\s\\S]*?)" + sectionStopLA,
@@ -230,6 +254,7 @@ function formatOutput(raw) {
 
   return `<ol class="idea-list">${itemsHtml}</ol>`;
 }
+
 
 
 // ==== Attach Expand Events ====
