@@ -1,3 +1,4 @@
+
 // ==== Element handles ====
 const promptInput   = document.getElementById("prompt");
 const generateBtn   = document.getElementById("generate");
