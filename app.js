@@ -56,6 +56,8 @@ Demo Considerations: ${demo}
 
 Return ONLY the following sections for each idea, with no introduction, no conclusion, and no extra text.
 
+Output exactly 3 ideas.
+
 Format exactly like this:
 
 Project Idea 1:
