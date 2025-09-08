@@ -32,18 +32,18 @@ function getSelected(group){ const checked=group.querySelectorAll("input[type=ch
 async function generateIdeas() {
   const prompt = promptInput.value.trim();
   const apiKey = apiKeyInput.value.trim();
-  if(!prompt){ setOutput("⚠️ Please enter a prompt."); return; }
-  if(!apiKey){ setOutput("⚠️ Please enter your API key."); return; }
+  if (!prompt) { setOutput("⚠️ Please enter a prompt."); return; }
+  if (!apiKey) { setOutput("⚠️ Please enter your API key."); return; }
 
-  const [budgetMin,budgetMax] = getBudgetRange();
-  const [timeMin,timeMax] = getTimeframeRange();
-  const selectedTechs = getSelected(techGroup);
+  const [budgetMin, budgetMax] = getBudgetRange();
+  const [timeMin, timeMax] = getTimeframeRange();
+  const selectedTechs      = getSelected(techGroup);
   const selectedIndustries = getSelected(industryGroup);
-  const complexity = document.querySelector('input[name="complexity"]:checked')?.value || "Medium";
-  const innovation = innovationSelect.value;
-  const demo = demoSelect.value;
+  const complexity         = document.querySelector('input[name="complexity"]:checked')?.value || "Medium";
+  const innovation         = innovationSelect.value;
+  const demo               = demoSelect.value;
 
-  let enhancedPrompt = `
+  const userConstraints = `
 User idea/constraints: ${prompt}
 Budget range: $${budgetMin} – $${budgetMax}
 Timeframe: ${timeMin} – ${timeMax} months
@@ -52,58 +52,203 @@ Industry focus: ${selectedIndustries.join(", ") || "N/A"}
 Project Complexity: ${complexity}
 Innovation Level: ${innovation}
 Demo Considerations: ${demo}
+`.trim();
 
+  // JSON Schema the model must follow
+  const responseSchema = {
+    type: "object",
+    properties: {
+      ideas: {
+        type: "array",
+        minItems: 3,
+        maxItems: 3,
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            generalDescription: { type: "string" },
+            requiredTechBudget: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  item: { type: "string" },
+                  cost: { type: "number" }
+                },
+                required: ["item"]
+              }
+            },
+            timeframeBreakdown: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  phase: { type: "string" },
+                  months: { type: "number" }
+                },
+                required: ["phase", "months"]
+              }
+            },
+            complexitySkillsNeeded: { type: "array", items: { type: "string" } },
+            similarProducts:       { type: "array", items: { type: "string" } },
+            novelElements:         { type: "array", items: { type: "string" } }
+          },
+          required: [
+            "name",
+            "generalDescription",
+            "requiredTechBudget",
+            "timeframeBreakdown",
+            "complexitySkillsNeeded",
+            "similarProducts",
+            "novelElements"
+          ]
+        }
+      }
+    },
+    required: ["ideas"]
+  };
 
-Return ONLY the following sections for each idea, with no introduction, no conclusion, and no extra text.
+  const systemPrompt = `
+Return ONLY valid JSON that matches the provided schema. 
+Do not include any explanatory text, headings, or Markdown—JSON only.
 
-Output exactly 3 ideas.
-
-Format exactly like this:
-
-Project Idea 1:
-Name: ...
-General Description: ...
-Required Technologies & Budget Breakdown: ...
-Timeframe Breakdown: ...
-Complexity & Skills Needed: ...
-Similar Products: ...
-Novel Elements: ...
-
-Project Idea 2:
-Name: ...
-General Description: ...
-Required Technologies & Budget Breakdown: ...
-Timeframe Breakdown: ...
-Complexity & Skills Needed: ...
-Similar Products: ...
-Novel Elements: ...
-
-Project Idea 3:
-Name: ...
-General Description: ...
-Required Technologies & Budget Breakdown: ...
-Timeframe Breakdown: ...
-Complexity & Skills Needed: ...
-Similar Products: ...
-Novel Elements: ...`;
+Generate EXACTLY 3 ideas that satisfy the constraints below.
+`.trim();
 
   setOutput("⏳ Generating ideas...");
 
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/${DEFAULT_MODEL}:generateContent`,{
-      method:"POST",
-      headers:{"Content-Type":"application/json","x-goog-api-key":apiKey},
-      body: JSON.stringify({contents:[{parts:[{text:enhancedPrompt}]}],generationConfig:{temperature:0.7}})
-    });
-    const data = await res.json();
-    if(data.error){ setOutput(`❌ API Error: ${data.error.message}`); return; }
-    const text = data?.candidates?.[0]?.content?.parts?.map(p=>p.text||"").join("").trim();
-    if(!text){ setOutput("⚠️ No response from Gemini."); return; }
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/${DEFAULT_MODEL}:generateContent`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `${systemPrompt}\n\n${userConstraints}` }] }],
+          generationConfig: {
+            temperature: 0.7,
+            // IMPORTANT: camelCase keys for Gemini REST API
+            responseMimeType: "application/json",
+            responseSchema
+          }
+        })
+      }
+    );
 
-    setOutput(formatOutput(text), true);
+    const data = await res.json();
+    if (data.error) {
+      setOutput(`❌ API Error: ${data.error.message}`);
+      return;
+    }
+
+    // Join all parts; some SDKs split JSON across parts
+    const raw = (data?.candidates?.[0]?.content?.parts || [])
+      .map(p => p.text ?? "")
+      .join("")
+      .trim();
+
+    const json = parseModelJSON(raw);
+    if (!json || !Array.isArray(json.ideas)) {
+      setOutput(
+        `⚠️ Could not parse JSON. Raw response:<br><pre>${escapeHTML(raw)}</pre>`,
+        true
+      );
+      return;
+    }
+
+    setOutput(renderIdeasJSON(json.ideas.slice(0, 3)), true);
     attachExpandEvents();
-  } catch { setOutput("❌ Network or fetch error."); }
+  } catch (e) {
+    setOutput("❌ Network or fetch error.");
+  }
 }
+function parseModelJSON(s) {
+  // Trim to the outermost JSON object if the model sneaks whitespace or notes
+  const start = s.indexOf("{");
+  const end   = s.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+  try {
+    const obj = JSON.parse(s.slice(start, end + 1));
+    // Some models may stringify the payload again inside; unbox if needed
+    if (typeof obj === "string") return JSON.parse(obj);
+    return obj;
+  } catch {
+    return null;
+  }
+}
+
+function escapeHTML(str) {
+  return String(str).replace(/[&<>"']/g, m => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[m]));
+}
+
+function currency(n) {
+  if (typeof n !== "number" || Number.isNaN(n)) return "";
+  return "$" + n.toLocaleString();
+}
+
+function renderIdeasJSON(ideas) {
+  return ideas.map((idea, idx) => {
+    const name = escapeHTML(idea?.name || `Project Idea ${idx + 1}`);
+
+    const genDesc = idea?.generalDescription
+      ? `<p>${escapeHTML(idea.generalDescription)}</p>` : "<p>N/A</p>";
+
+    const techBudget = Array.isArray(idea?.requiredTechBudget) && idea.requiredTechBudget.length
+      ? `<ul>` + idea.requiredTechBudget.map(row => {
+          const item = escapeHTML(row?.item ?? "Item");
+          const cost = (typeof row?.cost === "number") ? ` — ${currency(row.cost)}` : "";
+          return `<li>${item}${cost}</li>`;
+        }).join("") + `</ul>`
+      : "<p>N/A</p>";
+
+    const timeframe = Array.isArray(idea?.timeframeBreakdown) && idea.timeframeBreakdown.length
+      ? `<ul>` + idea.timeframeBreakdown.map(ph => {
+          const phase  = escapeHTML(ph?.phase ?? "Phase");
+          const months = (typeof ph?.months === "number") ? ` — ${ph.months} mo` : "";
+          return `<li>${phase}${months}</li>`;
+        }).join("") + `</ul>`
+      : "<p>N/A</p>";
+
+    const skills = Array.isArray(idea?.complexitySkillsNeeded) && idea.complexitySkillsNeeded.length
+      ? `<ul>` + idea.complexitySkillsNeeded.map(s => `<li>${escapeHTML(s)}</li>`).join("") + `</ul>`
+      : "<p>N/A</p>";
+
+    const similar = Array.isArray(idea?.similarProducts) && idea.similarProducts.length
+      ? `<ul>` + idea.similarProducts.map(s => `<li>${escapeHTML(s)}</li>`).join("") + `</ul>`
+      : "<p>N/A</p>";
+
+    const novel = Array.isArray(idea?.novelElements) && idea.novelElements.length
+      ? `<ul>` + idea.novelElements.map(s => `<li>${escapeHTML(s)}</li>`).join("") + `</ul>`
+      : "<p>N/A</p>";
+
+    return `
+      <div class="idea-card fade-in">
+        <h2>${name}</h2>
+
+        <div class="section-title">General Description<span class="expand-icon">▶</span></div>
+        <div class="section-content">${genDesc}</div>
+
+        <div class="section-title">Required Technologies & Budget Breakdown<span class="expand-icon">▶</span></div>
+        <div class="section-content">${techBudget}</div>
+
+        <div class="section-title">Timeframe Breakdown<span class="expand-icon">▶</span></div>
+        <div class="section-content">${timeframe}</div>
+
+        <div class="section-title">Complexity & Skills Needed<span class="expand-icon">▶</span></div>
+        <div class="section-content">${skills}</div>
+
+        <div class="section-title">Similar Products<span class="expand-icon">▶</span></div>
+        <div class="section-content">${similar}</div>
+
+        <div class="section-title">Novel Elements<span class="expand-icon">▶</span></div>
+        <div class="section-content">${novel}</div>
+      </div>
+    `;
+  }).join("");
+}
+
 
 function formatOutput(raw) {
   // ---------- Normalize & clean ----------
