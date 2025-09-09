@@ -3,94 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CE Project Ideator</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>Computer Engineering Project Idea Generator</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/nouislider@15.6.1/dist/nouislider.min.css" rel="stylesheet">
 </head>
 <body>
   <div class="container">
-    <h1>Computer Engineering Project Ideator</h1>
-
+    <h1>Computer Engineering Project Idea Generator</h1>
     <div class="columns">
-      <!-- Left column: Parameters -->
-      <div class="column column-left">
-        <label for="api-key">API Key:</label>
-        <input type="text" id="api-key" placeholder="Enter your Google API Key">
+      
+      <!-- LEFT COLUMN -->
+      <div class="column-left">
 
-        <label for="prompt">Project Idea / Constraints:</label>
-        <textarea id="prompt" placeholder="Describe your ideas, constraints, and/or interests..." rows="5"></textarea>
-
-        <label>Budget Range (USD):</label>
-        <div id="budget-slider"></div>
-        <div id="budget-display">Range: $100 – $1000</div>
-
-        <label>Timeframe (months):</label>
-        <div id="timeframe-slider"></div>
-        <div id="timeframe-display">6 – 12 months</div>
-
-        <label>Relevant Technologies:</label>
-        <div id="technologies" class="checkbox-group">
-          <label><input type="checkbox" value="Embedded Systems"> Embedded Systems</label>
-          <label><input type="checkbox" value="IoT"> IoT</label>
-          <label><input type="checkbox" value="AI/ML"> AI/ML</label>
-          <label><input type="checkbox" value="Robotics"> Robotics</label>
-          <label><input type="checkbox" value="Networking"> Networking</label>
-          <label><input type="checkbox" value="FPGA"> FPGA</label>
-          <label><input type="checkbox" value="Cloud"> Cloud</label>
-          <label><input type="checkbox" value="Smart Device"> Smart Device</label>
-          <label><input type="checkbox" value="Cybersecurity"> Cybersecurity</label>
-          <label><input type="checkbox" value="RF"> RF</label>
-          <label><input type="checkbox" value="Biomedical"> Biomedical</label>
-          <label><input type="checkbox" value="AR/VR"> AR/VR</label>
-          <label><input type="checkbox" value="Software Application"> Software Application</label>
+        <div class="param-group">
+          <label for="api-key">Google Gemini API Key</label>
+          <input type="text" id="api-key" placeholder="Enter your API key here">
         </div>
 
-        <label>Industry Focus:</label>
-        <div id="industries" class="checkbox-group">
-          <label><input type="checkbox" value="Defense"> Defense</label>
-          <label><input type="checkbox" value="Automotive"> Automotive</label>
-          <label><input type="checkbox" value="Aerospace"> Aerospace</label>
-          <label><input type="checkbox" value="Healthcare"> Healthcare</label>
-          <label><input type="checkbox" value="Energy"> Energy</label>
-          <label><input type="checkbox" value="Industrial"> Industrial</label>
-          <label><input type="checkbox" value="Consumer"> Consumer</label>
+        <div class="param-group">
+          <label for="prompt">Project Idea / Constraints</label>
+          <textarea id="prompt" rows="3" placeholder="Enter your idea or project constraints here..."></textarea>
         </div>
 
-        <label>Project Complexity:</label>
-        <div id="complexity" class="radio-group">
-          <label><input type="radio" name="complexity" value="Low"> Low</label>
-          <label><input type="radio" name="complexity" value="Medium" checked> Medium</label>
-          <label><input type="radio" name="complexity" value="High"> High</label>
+        <div class="param-group">
+          <label>Budget Range ($)</label>
+          <div id="budget-display">Range: $100 – $1000</div>
+          <div id="budget-slider"></div>
         </div>
 
-        <label>Innovation Level:</label>
-        <select id="innovation">
-          <option value="College Student Level">College Student Level</option>
-          <option value="Engineering Level">Engineering Level</option>
-          <option value="Corporate Technology Level">Huge Technology Corporate Level</option>
-        </select>
+        <div class="param-group">
+          <label>Timeframe (months)</label>
+          <div id="timeframe-display">6 – 12 months</div>
+          <div id="timeframe-slider"></div>
+        </div>
 
-        <label>Demo Considerations:</label>
-        <select id="demo">
-          <option value="Small Tabletop Demo">Small Tabletop Demo</option>
-          <option value="Medium Room Demo">Medium Room Demo</option>
-          <option value="Large Open Space Demo">Large Open Space Demo</option>
-        </select>
+        <div class="param-group">
+          <label>Preferred Technologies</label>
+          <div id="technologies" class="checkbox-group">
+            <label class="option-label"><input type="checkbox" value="AI/ML"> AI/ML</label>
+            <label class="option-label"><input type="checkbox" value="Biomedical"> Biomedical</label>
+            <label class="option-label"><input type="checkbox" value="IoT"> IoT</label>
+            <label class="option-label"><input type="checkbox" value="FPGA"> FPGA</label>
+            <label class="option-label"><input type="checkbox" value="Embedded Systems"> Embedded Systems</label>
+            <label class="option-label"><input type="checkbox" value="Radio Frequency"> Radio Frequency</label>
+            <label class="option-label"><input type="checkbox" value="Robotics"> Robotics</label>
+            <label class="option-label"><input type="checkbox" value="Cybersecurity"> Cybersecurity</label>
+          </div>
+        </div>
+
+        <div class="param-group">
+          <label>Industries</label>
+          <div id="industries" class="checkbox-group">
+            <label class="option-label"><input type="checkbox" value="Healthcare"> Healthcare</label>
+            <label class="option-label"><input type="checkbox" value="Automotive"> Automotive</label>
+            <label class="option-label"><input type="checkbox" value="Defense"> Defense</label>
+            <label class="option-label"><input type="checkbox" value="Consumer Electronics"> Consumer Electronics</label>
+            <label class="option-label"><input type="checkbox" value="Aerospace"> Aerospace</label>
+            <label class="option-label"><input type="checkbox" value="Energy"> Energy</label>
+          </div>
+        </div>
+
+        <div class="param-group">
+          <label>Complexity</label>
+          <div id="complexity" class="radio-group">
+            <label class="option-label"><input type="radio" name="complexity" value="Low"> Low</label>
+            <label class="option-label"><input type="radio" name="complexity" value="Medium" checked> Medium</label>
+            <label class="option-label"><input type="radio" name="complexity" value="High"> High</label>
+          </div>
+        </div>
+
+        <div class="param-group">
+          <label for="innovation">Innovation Level</label>
+          <select id="innovation">
+            <option value="College Student Level">College Student Level</option>
+            <option value="Engineering Level">Engineering Level</option>
+            <option value="Corporate Technology Level">Huge Technology Corporate Level</option>
+          </select>
+        </div>
+
+        <div class="param-group">
+          <label for="demo">Demo Considerations</label>
+          <select id="demo">
+            <option value="Small Tabletop Demo">Small Tabletop Demo</option>
+            <option value="Medium Room Demo">Medium Room Demo</option>
+            <option value="Large Open Space Demo">Large Open Space Demo</option>
+          </select>
+        </div>
 
         <button id="generate" class="primary-btn">Generate Ideas</button>
       </div>
 
-      <!-- Right column: Results -->
-      <div class="column column-right">
-        <h2>Results</h2>
-        <p>The generated project ideas will appear here:</p>
-        <div id="output" class="output-box"></div>
+      <!-- RIGHT COLUMN -->
+      <div class="column-right">
+        <div class="output-box" id="output">
+          <h2>Results</h2>
+          <p style="color:#fbe462;">The generated project ideas will appear here:</p>
+        </div>
       </div>
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/nouislider@15.6.1/dist/nouislider.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
