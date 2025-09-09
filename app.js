@@ -15,7 +15,7 @@ const apiKeyInput = document.getElementById("api-key");
 const DEFAULT_MODEL = "models/gemini-2.5-flash";
 
 // ==== Sliders ====
-noUiSlider.create(budgetSlider, { start: [100, 1000], connect: true, range: { min: 0, max: 10000 }, step: 50 });
+noUiSlider.create(budgetSlider, { start: [100, 1000], connect: true, range: { min: 0, max: 5000 }, step: 50 });
 noUiSlider.create(timeframeSlider, { start: [6, 12], connect: true, range: { min: 1, max: 24 }, step: 1 });
 
 function getBudgetRange() { const v = budgetSlider.noUiSlider.get(true); return [Math.round(v[0]), Math.round(v[1])]; }
